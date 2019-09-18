@@ -52,7 +52,7 @@ GCC_FLAGS = {
 class Rocket2RV64(Module):
     @property
     def name(self):
-        return "rocket"
+        return "rocket2"
 
     @property
     def endianness(self):
