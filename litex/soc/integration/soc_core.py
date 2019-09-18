@@ -196,7 +196,7 @@ class SoCCore(Module):
         # NOTE: RocketChip reserves the first 256Mbytes for internal use,
         #       so we must change default mem_map;
         #       Also, CSRs *must* be 64-bit aligned.
-        if cpu_type == "rocket":
+        if cpu_type == "rocket" or cpu_type == "rocket2":
             self.soc_mem_map["rom"]  = 0x10000000
             self.soc_mem_map["sram"] = 0x11000000
             self.soc_mem_map["csr"]  = 0x12000000
@@ -264,6 +264,8 @@ class SoCCore(Module):
                 self.add_cpu(cpu.minerva.Minerva(platform, self.cpu_reset_address, self.cpu_variant))
             elif cpu_type == "rocket":
                 self.add_cpu(cpu.rocket.RocketRV64(platform, self.cpu_reset_address, self.cpu_variant))
+            elif cpu_type == "rocket2":
+                self.add_cpu(cpu.rocket2.Rocket2RV64(platform, self.cpu_reset_address, self.cpu_variant))
             else:
                 raise ValueError("Unsupported CPU type: {}".format(cpu_type))
 
