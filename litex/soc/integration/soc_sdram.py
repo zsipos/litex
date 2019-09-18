@@ -101,6 +101,10 @@ class SoCSDRAM(SoCCore):
             else:
                 self.submodules.wishbone_bridge = LiteDRAMWishbone2Native(self.l2_cache.slave, port)
 
+        # connect cpu to sdram
+        if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
+            self.cpu.connect_sdram(self)
+
     def do_finalize(self):
         if not self.integrated_main_ram_size:
             if not self._sdram_phy:
