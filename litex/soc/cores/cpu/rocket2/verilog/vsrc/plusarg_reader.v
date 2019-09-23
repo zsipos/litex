@@ -15,7 +15,7 @@ reg [WIDTH-1:0] myplus;
 assign out = myplus;
 
 initial begin
-   if (!$value$plusargs(FORMAT, myplus)) myplus = DEFAULT;
+//   if (!$value$plusargs(FORMAT, myplus)) myplus = DEFAULT;
 end
 `endif
 
