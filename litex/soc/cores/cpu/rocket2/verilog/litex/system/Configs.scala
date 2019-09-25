@@ -10,23 +10,23 @@ import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.rocket.{DCacheParams, ICacheParams, MulDivParams, RocketCoreParams}
 import freechips.rocketchip.tile.RocketTileParams
 
-class WithLitexMemPort extends Config((site, here, up) => {
+class WithLitexMemPorts extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
-    base = x"1000_0000",
-    size = x"3000_0000",
+    base = x"1000_0000", //litex bios base
+    size = x"3000_0000", //up to dram start
     beatBytes = site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
   case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
-    base = x"4000_0000",
-    size = x"4000_0000",
+    base = x"4000_0000", //litex dram base
+    size = x"4000_0000", //up to litex shadow base
     beatBytes = site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
 })
 
 class WithLitexMMIOPort extends Config((site, here, up) => {
   case ExtBus => Some(MasterPortParams(
-    base = x"8000_0000",
-    size = x"8000_0000",
+    base = x"8000_0000", //litex shadow base
+    size = x"8000_0000", //up to the end
     beatBytes = 4,
     idBits = 4))
 })
@@ -54,7 +54,7 @@ class WithNMediumCores(n: Int) extends Config((site, here, up) => {
 })
 
 class BaseLitexConfig extends Config(
-  new WithLitexMemPort() ++
+  new WithLitexMemPorts() ++
   new WithLitexMMIOPort() ++
   new WithNoSlavePort ++
   new WithNExtTopInterrupts(4) ++
