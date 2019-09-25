@@ -1,15 +1,13 @@
 	.text
 
 	.comm _st,8,8
-	.comm _r1,8,8
-        .comm _r2,8,8
-        .comm _r3,8,8
-        .comm _ad,8,8
+    .comm _r3,8,8
+    .comm _ad,8,8
 
 	.global boot_helper
 boot_helper:
-	sd a0, _r1, t0
-	sd a1, _r2, t0
+	csrr a0, mhartid
+	la a1, dt_blob_start
 	sd a2, _r3, t0
 	sd a3, _ad, t0
 	li a4, 1
@@ -23,9 +21,14 @@ hart_wait:
 hart_wait_loop:
 	ld t0, _st
 	beqz t0, hart_wait_loop
-	ld a0, _r1
-	ld a1, _r2
+	csrr a0, mhartid
+	la a1, dt_blob_start
 	ld a2, _r3
 	ld a3, _ad
 	jr a3
+
+    .data
+
+dt_blob_start:
+    .incbin "generated/devicetree.dtb"
 

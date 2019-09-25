@@ -129,6 +129,16 @@ class Builder:
                         self.soc.sdram.controller.settings.phy,
                         self.soc.sdram.controller.settings.timing))
 
+        if self.soc.cpu_type == "rocket2":
+            if hasattr(self.soc, "get_dts"):
+                dts = self.soc.get_dts()
+            else:
+                dts = "/dts-v1/;/{};"
+            name_dts = os.path.join(generated_dir, "devicetree.dts")
+            name_dtb = os.path.join(generated_dir, "devicetree.dtb")
+            write_to_file(name_dts, dts)
+            os.system("dtc -I dts " + name_dts + " -O dtb -o " + name_dtb)
+
     def _generate_csr_map(self, csr_json=None, csr_csv=None):
         memory_regions = self.soc.get_memory_regions()
         csr_regions = self.soc.get_csr_regions()
