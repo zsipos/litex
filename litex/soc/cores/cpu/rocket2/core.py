@@ -295,16 +295,74 @@ class Rocket2RV64(Module):
 
     @staticmethod
     def add_sources(platform, variant="standard"):
-        vdir = os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), "verilog")
         platform.add_sources(
-            os.path.join(vdir, "rocket-chip", "vsim", "generated-src"),
+            get_gdir(),
             CPU_VARIANTS[variant] + ".v",
             CPU_VARIANTS[variant] + ".behav_srams.v",
         )
         platform.add_sources(
-            os.path.join(vdir, "vsrc"),
+            os.path.join(get_vdir(), "vsrc"),
             "plusarg_reader.v",
             "AsyncResetReg.v",
             "EICG_wrapper.v",
         )
+
+    @staticmethod
+    def build_dts(variant = "standard",
+                  bootargs="",
+                  sdram_size=0x40000000,
+                  timebase_frequency=600000,
+                  devices="//insert your devices here\n"):
+        with open(os.path.join(get_gdir(), CPU_VARIANTS[variant] + ".dts"), "r") as f:
+            dtslines = f.readlines()
+        # find dram label
+        for i in dtslines:
+            if i.find("memory@40000000") > -1:
+                dramlabel = i.split(":", 1)[0].lstrip()
+                break
+        inmemory1 = False
+        inmemory2 = False
+        dts = ""
+        for i in dtslines:
+            if i.find("timebase-frequency") > -1:
+                pass
+            elif i.find("cpus {") > -1:
+                # insert before cpus section
+                dts += i.split("L", 1)[0]
+                dts += 'chosen { bootargs = "earlycon=sbi console=hvc0 swiotlb=noforce ' + bootargs +' "; };\n';
+                dts += i
+            elif i.find("cpu@0") > -1:
+                # insert before cpu section
+                dts += i.split("L", 1)[0]
+                dts += "timebase-frequency = <" + str(timebase_frequency) + ">;\n"
+                dts += i
+            elif i.find("next-level-cache =") > -1:
+                # bios rom is of no interest for linux
+                dts += i.split("=", 1)[0] + "= <&" + dramlabel + ">;\n"
+            elif i.find("riscv,isa =") > -1:
+                # cheat riscv-pk
+                dts += i.split("=", 1)[0] + '= "rv64imafdc";\n'
+            elif i.find("mmio-port-axi4@80000000") > -1:
+                # add our devices here
+                inmemory1 = True
+                dts += devices
+            elif i.find("memory@10000000") > -1:
+                inmemory1 = True
+            elif inmemory1 and i.find("};") > -1:
+                inmemory1 = False
+            elif i.find("memory@40000000") > -1:
+                inmemory2 = True
+                dts += i
+            elif inmemory2 and i.find("reg =") > -1:
+                # fix memory size
+                inmemory2 = False
+                dts += i.split("=", 1)[0] + "= <0x40000000 " + hex(sdram_size) + ">;\n"
+            elif not inmemory1:
+                    dts += i
+        return dts
+
+def get_vdir():
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), "verilog")
+
+def get_gdir():
+    return os.path.join(get_vdir(), "rocket-chip", "vsim", "generated-src")
