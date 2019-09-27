@@ -313,6 +313,8 @@ class Rocket2RV64(Module):
                   sdram_size=0x40000000,
                   timebase_frequency=600000,
                   devices="//insert your devices here\n"):
+        if len(bootargs):
+            bootargs = " " + bootargs
         with open(os.path.join(get_gdir(), CPU_VARIANTS[variant] + ".dts"), "r") as f:
             dtslines = f.readlines()
         # find dram label
@@ -328,8 +330,10 @@ class Rocket2RV64(Module):
                 pass
             elif i.find("cpus {") > -1:
                 # insert before cpus section
-                dts += i.split("L", 1)[0]
-                dts += 'chosen { bootargs = "earlycon=sbi console=hvc0 swiotlb=noforce ' + bootargs +' "; };\n';
+                tabs = i.split("L", 1)[0]
+                dts += tabs + "chosen {\n"
+                dts += tabs + '\tbootargs = "earlycon=sbi console=hvc0 swiotlb=noforce' + bootargs +'";\n'
+                dts += tabs + "};\n";
                 dts += i
             elif i.find("cpu@0") > -1:
                 # insert before cpu section
