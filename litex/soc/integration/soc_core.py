@@ -34,7 +34,6 @@ from litex.soc.interconnect import wishbone, csr_bus, wishbone2csr
 __all__ = [
     "mem_decoder",
     "get_mem_data",
-    "csr_map_update",
     "SoCCore",
     "soc_core_args",
     "soc_core_argdict",
@@ -104,10 +103,6 @@ def mem_decoder(address, size=0x10000000):
     size    >>= 2 # bytes to words aligned
     return lambda a: (a[log2_int(size):-1] == (address >> log2_int(size)))
 
-def csr_map_update(csr_map, csr_peripherals):
-    csr_map.update(dict((n, v)
-        for v, n in enumerate(csr_peripherals, start=max(csr_map.values()) + 1)))
-
 # SoCController ------------------------------------------------------------------------------------
 
 class SoCController(Module, AutoCSR):
@@ -167,7 +162,7 @@ class SoCCore(Module):
                 # Controller parameters
                 with_ctrl=True,
                 # Wishbone parameters
-                wishbone_timeout_cycles=1e6):
+                with_wishbone=True, wishbone_timeout_cycles=1e6):
         self.platform = platform
         self.clk_freq = clk_freq
 
@@ -192,26 +187,18 @@ class SoCCore(Module):
         self._csr_masters = []
 
         # Parameters managment ---------------------------------------------------------------------
-
-        # NOTE: RocketChip reserves the first 256Mbytes for internal use,
-        #       so we must change default mem_map;
-        #       Also, CSRs *must* be 64-bit aligned.
-        if cpu_type == "rocket" or cpu_type == "rocket2":
-            self.soc_mem_map["rom"]  = 0x10000000
-            self.soc_mem_map["sram"] = 0x11000000
-            self.soc_mem_map["csr"]  = 0x12000000
-            csr_alignment = 64
-
         if cpu_type == "None":
             cpu_type = None
-        self.cpu_type = cpu_type
 
+        # FIXME: On RocketChip, CSRs *must* be 64-bit aligned.
+        if cpu_type == "rocket" or cpu_type == "rocket2":
+            csr_alignment = 64
+
+        if not with_wishbone:
+            self.soc_mem_map["csr"]  = 0x00000000
+
+        self.cpu_type    = cpu_type
         self.cpu_variant = cpu.check_format_cpu_variant(cpu_variant)
-
-        if integrated_rom_size:
-            cpu_reset_address = self.soc_mem_map["rom"]
-        self.cpu_reset_address = cpu_reset_address
-        self.config["CPU_RESET_ADDR"] = self.cpu_reset_address
 
         self.shadow_base = shadow_base
 
@@ -222,6 +209,7 @@ class SoCCore(Module):
 
         assert csr_data_width in [8, 32, 64]
         assert csr_alignment in [32, 64]
+        assert 2**(csr_address_width + 2) <= 0x1000000
         self.csr_data_width = csr_data_width
         self.csr_alignment = csr_alignment
         self.csr_address_width = csr_address_width
@@ -231,6 +219,7 @@ class SoCCore(Module):
         self.with_uart = with_uart
         self.uart_baudrate = uart_baudrate
 
+        self.with_wishbone = with_wishbone
         self.wishbone_timeout_cycles = wishbone_timeout_cycles
 
         # Modules instances ------------------------------------------------------------------------
@@ -249,25 +238,19 @@ class SoCCore(Module):
         if cpu_type is not None:
             if cpu_variant is not None:
                 self.config["CPU_VARIANT"] = str(cpu_variant.split('+')[0]).upper()
-            # CPU selection / instance
-            if cpu_type == "lm32":
-                self.add_cpu(cpu.lm32.LM32(platform, self.cpu_reset_address, self.cpu_variant))
-            elif cpu_type == "mor1kx" or cpu_type == "or1k":
-                if cpu_type == "or1k":
-                    deprecated_warning("SoCCore's \"cpu-type\" to \"mor1kx\"")
-                self.add_cpu(cpu.mor1kx.MOR1KX(platform, self.cpu_reset_address, self.cpu_variant))
-            elif cpu_type == "picorv32":
-                self.add_cpu(cpu.picorv32.PicoRV32(platform, self.cpu_reset_address, self.cpu_variant))
-            elif cpu_type == "vexriscv":
-                self.add_cpu(cpu.vexriscv.VexRiscv(platform, self.cpu_reset_address, self.cpu_variant))
-            elif cpu_type == "minerva":
-                self.add_cpu(cpu.minerva.Minerva(platform, self.cpu_reset_address, self.cpu_variant))
-            elif cpu_type == "rocket":
-                self.add_cpu(cpu.rocket.RocketRV64(platform, self.cpu_reset_address, self.cpu_variant))
-            elif cpu_type == "rocket2":
-                self.add_cpu(cpu.rocket2.Rocket2RV64(platform, self.cpu_reset_address, self.cpu_variant))
-            else:
+            # Check type
+            if cpu_type not in cpu.CPUS.keys():
                 raise ValueError("Unsupported CPU type: {}".format(cpu_type))
+            # Add the CPU
+            self.add_cpu(cpu.CPUS[cpu_type](platform, self.cpu_variant))
+
+            # Override Memory Map (if needed by CPU)
+            if hasattr(self.cpu, "mem_map"):
+                self.soc_mem_map.update(self.cpu.mem_map)
+
+            # Set reset address
+            self.cpu.set_reset_address(self.soc_mem_map["rom"] if integrated_rom_size else cpu_reset_address)
+            self.config["CPU_RESET_ADDR"] = self.cpu.reset_address
 
             # Add Instruction/Data buses as Wisbone masters
             self.add_wb_master(self.cpu.ibus)
@@ -303,15 +286,6 @@ class SoCCore(Module):
             self.submodules.main_ram = wishbone.SRAM(integrated_main_ram_size, init=integrated_main_ram_init)
             self.register_mem("main_ram", self.soc_mem_map["main_ram"], self.main_ram.bus, integrated_main_ram_size)
 
-        # Add Wishbone to CSR bridge
-        self.submodules.wishbone2csr = wishbone2csr.WB2CSR(
-            bus_csr=csr_bus.Interface(csr_data_width, csr_address_width))
-        self.add_csr_master(self.wishbone2csr.csr)
-        self.config["CSR_DATA_WIDTH"] = csr_data_width
-        self.config["CSR_ALIGNMENT"] = csr_alignment
-        assert 2**(csr_address_width + 2) <= 0x1000000
-        self.register_mem("csr", self.soc_mem_map["csr"], self.wishbone2csr.wishbone, 0x1000000)
-
         # Add UART
         if with_uart:
             if uart_stub:
@@ -344,6 +318,17 @@ class SoCCore(Module):
             self.add_csr("timer0", allow_user_defined=True)
             self.add_interrupt("timer0", allow_user_defined=True)
 
+        # Add Wishbone to CSR bridge
+        self.config["CSR_DATA_WIDTH"] = self.csr_data_width
+        self.config["CSR_ALIGNMENT"]  = self.csr_alignment
+        if with_wishbone:
+            self.submodules.wishbone2csr = wishbone2csr.WB2CSR(
+                bus_csr=csr_bus.Interface(
+                    address_width=self.csr_address_width,
+                    data_width=self.csr_data_width))
+            self.add_csr_master(self.wishbone2csr.csr)
+            self.register_mem("csr", self.soc_mem_map["csr"], self.wishbone2csr.wishbone, 0x1000000)
+
     # Methods --------------------------------------------------------------------------------------
 
     def add_cpu(self, cpu):
@@ -352,11 +337,6 @@ class SoCCore(Module):
         if hasattr(self, "cpu"):
             raise NotImplementedError("More than one CPU is not supported")
         self.submodules.cpu = cpu
-
-    def add_cpu_or_bridge(self, cpu_or_bridge):
-        deprecated_warning("SoCCore's \"add_cpu_or_bridge\" call to \"add_cpu\"")
-        self.add_cpu(cpu_or_bridge)
-        self.cpu_or_bridge = self.cpu
 
     def add_interrupt(self, interrupt_name, interrupt_id=None, allow_user_defined=False):
         # Check that interrupt_name is not already used
@@ -453,7 +433,7 @@ class SoCCore(Module):
 
     def register_rom(self, interface, rom_size=0xa000):
         self.add_wb_slave(self.soc_mem_map["rom"], interface, rom_size)
-        self.add_memory_region("rom", self.cpu_reset_address, rom_size)
+        self.add_memory_region("rom", self.cpu.reset_address, rom_size)
 
     def get_memory_regions(self):
         return self._memory_regions
@@ -527,7 +507,8 @@ class SoCCore(Module):
             alignment=self.csr_alignment)
 
         # Add CSRs interconnect
-        self.submodules.csrcon = csr_bus.InterconnectShared(
+        if len(self._csr_masters) != 0:
+            self.submodules.csrcon = csr_bus.InterconnectShared(
                 self._csr_masters, self.csrbankarray.get_buses())
 
         # Check and add CSRs regions
@@ -567,7 +548,7 @@ class SoCCore(Module):
 
 def soc_core_args(parser):
     parser.add_argument("--cpu-type", default=None,
-                        help="select CPU: lm32, or1k, picorv32, vexriscv, minerva, rocket")
+                        help="select CPU: {}".format(", ".join(iter(cpu.CPUS.keys()))))
     parser.add_argument("--cpu-variant", default=None,
                         help="select CPU variant")
     parser.add_argument("--integrated-rom-size", default=None, type=int,

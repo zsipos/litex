@@ -58,6 +58,15 @@ class RocketRV64(Module):
         return "little"
 
     @property
+    def mem_map(self):
+        # Rocket reserves the first 256Mbytes for internal use, so we must change default mem_map.
+        return {
+            "rom"  : 0x10000000,
+            "sram" : 0x11000000,
+            "csr"  : 0x12000000,
+        }
+
+    @property
     def gcc_triple(self):
         return ("riscv64-unknown-elf")
 
@@ -76,9 +85,9 @@ class RocketRV64(Module):
     def reserved_interrupts(self):
         return {}
 
-    def __init__(self, platform, cpu_reset_addr, variant="standard"):
+    def __init__(self, platform, variant="standard"):
         assert variant in CPU_VARIANTS, "Unsupported variant %s" % variant
-        assert cpu_reset_addr == 0x10000000, "cpu_reset_addr hardcoded in Chisel elaboration!"
+
 
         self.platform = platform
         self.variant = variant
@@ -100,7 +109,7 @@ class RocketRV64(Module):
 
         # # #
 
-        self.specials += Instance("ExampleRocketSystem",
+        self.cpu_params = dict(
             # clock, reset
             i_clock=ClockSignal(),
             i_reset=ResetSignal() | self.reset,
@@ -231,6 +240,11 @@ class RocketRV64(Module):
         # add verilog sources
         self.add_sources(platform, variant)
 
+    def set_reset_address(self, reset_address):
+        assert not hasattr(self, "reset_address")
+        self.reset_address = reset_address
+        assert reset_address == 0x10000000, "cpu_reset_addr hardcoded in during elaboration!"
+
     @staticmethod
     def add_sources(platform, variant="standard"):
         vdir = os.path.join(
@@ -246,3 +260,7 @@ class RocketRV64(Module):
             "AsyncResetReg.v",
             "EICG_wrapper.v",
         )
+
+    def do_finalize(self):
+        assert hasattr(self, "reset_address")
+        self.specials += Instance("ExampleRocketSystem", **self.cpu_params)

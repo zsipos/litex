@@ -39,7 +39,7 @@ class Minerva(Module):
     def reserved_interrupts(self):
         return {}
 
-    def __init__(self, platform, cpu_reset_address, variant="standard"):
+    def __init__(self, platform, variant="standard"):
         assert variant is "standard", "Unsupported variant %s" % variant
         self.platform = platform
         self.variant = variant
@@ -50,7 +50,7 @@ class Minerva(Module):
 
         # # #
 
-        self.specials += Instance("minerva_cpu",
+        self.cpu_params = dict(
             # clock / reset
             i_clk=ClockSignal(),
             i_rst=ResetSignal(),
@@ -88,8 +88,17 @@ class Minerva(Module):
         # add verilog sources
         self.add_sources(platform)
 
+    def set_reset_address(self, reset_address):
+        assert not hasattr(self, "reset_address")
+        self.reset_address = reset_address
+        assert reset_address == 0x00000000, "cpu_reset_addr hardcoded during elaboration!"
+
     @staticmethod
     def add_sources(platform):
         vdir = os.path.join(
             os.path.abspath(os.path.dirname(__file__)), "verilog")
         platform.add_source(os.path.join(vdir, "minerva.v"))
+
+    def do_finalize(self):
+        assert hasattr(self, "reset_address")
+        self.specials += Instance("minerva_cpu", **self.cpu_params)

@@ -25,6 +25,18 @@ class MOR1KX(Module):
         return "big"
 
     @property
+    def mem_map_linux(self):
+        # Mainline Linux OpenRISC arch code requires Linux kernel to be loaded at the physical
+        # address of 0x0. As we are running Linux from the MAIN_RAM region - move it to satisfy
+        # that requirement.
+        return {
+            "main_ram" : 0x00000000,
+            "rom"      : 0x10000000,
+            "sram"     : 0x50000000,
+            "csr"      : 0x60000000,
+        }
+
+    @property
     def gcc_triple(self):
         return "or1k-elf"
 
@@ -58,7 +70,7 @@ class MOR1KX(Module):
     def reserved_interrupts(self):
         return {"nmi": 0}
 
-    def __init__(self, platform, reset_pc, variant="standard"):
+    def __init__(self, platform, variant="standard"):
         assert variant in CPU_VARIANTS, "Unsupported variant %s" % variant
         self.platform = platform
         self.variant = variant
@@ -66,6 +78,9 @@ class MOR1KX(Module):
         self.ibus = i = wishbone.Interface()
         self.dbus = d = wishbone.Interface()
         self.interrupt = Signal(32)
+
+        if variant == "linux":
+            self.mem_map = self.mem_map_linux
 
         # # #
 
@@ -90,20 +105,19 @@ class MOR1KX(Module):
             p_FEATURE_CMOV="ENABLED",
             p_FEATURE_FFL1="ENABLED",
             p_OPTION_CPU0="CAPPUCCINO",
-            p_OPTION_RESET_PC=reset_pc,
             p_IBUS_WB_TYPE="B3_REGISTERED_FEEDBACK",
             p_DBUS_WB_TYPE="B3_REGISTERED_FEEDBACK",
         )
 
         if variant == "linux":
-            cpu_args.update(dict(
+            cpu_args.update(
                 # Linux needs the memory management units.
                 p_FEATURE_IMMU="ENABLED",
                 p_FEATURE_DMMU="ENABLED",
                 # FIXME: Currently we need the or1k timer when we should be
                 # using the litex timer.
                 p_FEATURE_TIMER="ENABLED",
-            ))
+            )
             # FIXME: Check if these are needed?
             use_defaults = (
                 "p_FEATURE_SYSCALL", "p_FEATURE_TRAP", "p_FEATURE_RANGE",
@@ -114,7 +128,7 @@ class MOR1KX(Module):
 
         i_adr_o = Signal(32)
         d_adr_o = Signal(32)
-        self.specials += Instance("mor1kx",
+        self.cpu_params = dict(
             **cpu_args,
 
             i_clk=ClockSignal(),
@@ -146,7 +160,8 @@ class MOR1KX(Module):
             i_dwbm_dat_i=d.dat_r,
             i_dwbm_ack_i=d.ack,
             i_dwbm_err_i=d.err,
-            i_dwbm_rty_i=0)
+            i_dwbm_rty_i=0
+        )
 
         self.comb += [
             self.ibus.adr.eq(i_adr_o[2:]),
@@ -156,6 +171,11 @@ class MOR1KX(Module):
         # add verilog sources
         self.add_sources(platform)
 
+    def set_reset_address(self, reset_address):
+        assert not hasattr(self, "reset_address")
+        self.reset_address = reset_address
+        self.cpu_params.update(p_OPTION_RESET_PC=reset_address)
+
     @staticmethod
     def add_sources(platform):
         vdir = os.path.join(
@@ -163,3 +183,7 @@ class MOR1KX(Module):
             "verilog", "rtl", "verilog")
         platform.add_source_dir(vdir)
         platform.add_verilog_include_path(vdir)
+
+    def do_finalize(self):
+        assert hasattr(self, "reset_address")
+        self.specials += Instance("mor1kx", **self.cpu_params)

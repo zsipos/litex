@@ -59,6 +59,15 @@ class Rocket2RV64(Module):
         return "little"
 
     @property
+    def mem_map(self):
+        # Rocket reserves the first 256Mbytes for internal use, so we must change default mem_map.
+        return {
+            "rom"  : 0x10000000,
+            "sram" : 0x11000000,
+            "csr"  : 0x12000000,
+        }
+
+    @property
     def gcc_triple(self):
         return ("riscv64-unknown-linux-gnu")
 
@@ -77,9 +86,8 @@ class Rocket2RV64(Module):
     def reserved_interrupts(self):
         return {}
 
-    def __init__(self, platform, cpu_reset_addr, variant="standard"):
+    def __init__(self, platform, variant="standard"):
         assert variant in CPU_VARIANTS, "Unsupported variant %s" % variant
-        assert cpu_reset_addr == 0x10000000, "cpu_reset_addr hardcoded in Chisel elaboration!"
 
         self.platform = platform
         self.variant = variant
@@ -292,6 +300,11 @@ class Rocket2RV64(Module):
             mem2_dc = wishbone.Converter(mem2_wb, ibus2)
             self.submodules += mem2_a2w, mem2_dc
             soc.add_wb_master(ibus2)
+
+    def set_reset_address(self, reset_address):
+        assert not hasattr(self, "reset_address")
+        self.reset_address = reset_address
+        assert reset_address == 0x10000000, "cpu_reset_addr hardcoded in during elaboration!"
 
     @staticmethod
     def add_sources(platform, variant="standard"):
