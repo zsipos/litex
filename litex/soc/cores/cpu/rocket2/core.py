@@ -85,7 +85,7 @@ class Rocket2RV64(Module):
         self.variant = variant
         self.reset = Signal()
 
-        self.interrupt = Signal(4)
+        self.interrupt = Signal(8)
 
         # memory bus up to real dram start
         self.mem_axi = mem_axi = axi.AXIInterface(

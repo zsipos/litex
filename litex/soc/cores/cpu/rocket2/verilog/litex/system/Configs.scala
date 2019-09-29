@@ -33,7 +33,7 @@ class WithLitexMMIOPort extends Config((site, here, up) => {
 
 class WithNMediumCores(n: Int) extends Config((site, here, up) => {
   case RocketTilesKey => {
-    val big = RocketTileParams(
+    val med = RocketTileParams(
       core   = RocketCoreParams(fpu = None, mulDiv = Some(MulDivParams(
         mulUnroll = 8,
         mulEarlyOut = true,
@@ -49,7 +49,7 @@ class WithNMediumCores(n: Int) extends Config((site, here, up) => {
         //nTLBEntries = 64,
         rowBits = site(SystemBusKey).beatBits,
         blockBytes = site(CacheBlockBytes))))
-    List.tabulate(n)(i => big.copy(hartId = i))
+    List.tabulate(n)(i => med.copy(hartId = i))
   }
 })
 
@@ -57,7 +57,7 @@ class BaseLitexConfig extends Config(
   new WithLitexMemPorts() ++
   new WithLitexMMIOPort() ++
   new WithNoSlavePort ++
-  new WithNExtTopInterrupts(4) ++
+  new WithNExtTopInterrupts(8) ++
   new WithoutTLMonitors ++
   new BaseConfig
 )
