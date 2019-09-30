@@ -25,6 +25,3 @@
 [submodule "litex/soc/cores/cpu/rocket2/verilog/rocket-chip"]
 	path = litex/soc/cores/cpu/rocket2/verilog/rocket-chip
 	url = https://github.com/zsipos/rocket-chip
-[submodule "litex/soc/cores/cpu/serv/verilog"]
-	path = litex/soc/cores/cpu/serv/verilog
-	url = https://github.com/olofk/serv

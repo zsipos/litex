@@ -13,12 +13,7 @@
 # License: BSD
 
 import os
-import struct
 import inspect
-import json
-import math
-import datetime
-import time
 from operator import itemgetter
 
 from migen import *
@@ -29,7 +24,7 @@ from litex.soc.cores import identifier, timer, uart
 from litex.soc.cores import cpu
 from litex.soc.interconnect.csr import *
 from litex.soc.interconnect import wishbone, csr_bus, wishbone2csr
-
+from litex.soc.integration.common import *
 
 __all__ = [
     "mem_decoder",
@@ -42,73 +37,12 @@ __all__ = [
     "soc_mini_argdict",
 ]
 
-# Helpers ------------------------------------------------------------------------------------------
-
-def version(with_time=True):
-    if with_time:
-        return datetime.datetime.fromtimestamp(
-                time.time()).strftime("%Y-%m-%d %H:%M:%S")
-    else:
-        return datetime.datetime.fromtimestamp(
-                time.time()).strftime("%Y-%m-%d")
-
-def get_mem_data(filename_or_regions, endianness="big", mem_size=None):
-    # create memory regions
-    if isinstance(filename_or_regions, dict):
-        regions = filename_or_regions
-    else:
-        filename = filename_or_regions
-        _, ext = os.path.splitext(filename)
-        if ext == ".json":
-            f = open(filename, "r")
-            regions = json.load(f)
-            f.close()
-        else:
-            regions = {filename: "0x00000000"}
-
-    # determine data_size
-    data_size = 0
-    for filename, base in regions.items():
-        data_size = max(int(base, 16) + os.path.getsize(filename), data_size)
-    assert data_size > 0
-    if mem_size is not None:
-        assert data_size < mem_size, (
-            "file is too big: {}/{} bytes".format(
-             data_size, mem_size))
-
-    # fill data
-    data = [0]*math.ceil(data_size/4)
-    for filename, base in regions.items():
-        with open(filename, "rb") as f:
-            i = 0
-            while True:
-                w = f.read(4)
-                if not w:
-                    break
-                if len(w) != 4:
-                    for _ in range(len(w), 4):
-                        w += b'\x00'
-                if endianness == "little":
-                    data[int(base, 16)//4 + i] = struct.unpack("<I", w)[0]
-                else:
-                    data[int(base, 16)//4 + i] = struct.unpack(">I", w)[0]
-                i += 1
-    return data
-
-def mem_decoder(address, size=0x10000000):
-    address &= ~0x80000000
-    size = 2**log2_int(size, False)
-    assert (address & (size - 1)) == 0
-    address >>= 2 # bytes to words aligned
-    size    >>= 2 # bytes to words aligned
-    return lambda a: (a[log2_int(size):-1] == (address >> log2_int(size)))
-
 # SoCController ------------------------------------------------------------------------------------
 
 class SoCController(Module, AutoCSR):
     def __init__(self):
-        self._reset = CSR()
-        self._scratch = CSRStorage(32, reset=0x12345678)
+        self._reset      = CSR()
+        self._scratch    = CSRStorage(32, reset=0x12345678)
         self._bus_errors = CSRStatus(32)
 
         # # #
@@ -119,7 +53,7 @@ class SoCController(Module, AutoCSR):
 
         # bus errors
         self.bus_error = Signal()
-        bus_errors = Signal(32)
+        bus_errors     = Signal(32)
         self.sync += \
             If(bus_errors != (2**len(bus_errors)-1),
                 If(self.bus_error,
@@ -166,22 +100,20 @@ class SoCCore(Module):
         self.platform = platform
         self.clk_freq = clk_freq
 
-        # config dictionary (store all SoC's parameters to be exported to software)
-        self.config = dict()
-
-        # SoC's register/interrupt/memory mappings (default or user defined + dynamically allocateds)
-        self.soc_csr_map = {}
+        # SoC's CSR/Mem/Interrupt mapping (default or user defined + dynamically allocateds)
+        self.soc_csr_map       = {}
         self.soc_interrupt_map = {}
-        self.soc_mem_map = self.mem_map
+        self.soc_mem_map       = self.mem_map
 
-        # Regions / Constants lists
-        self._memory_regions = []  # (name, origin, length)
-        self._csr_regions = []     # (name, origin, busword, csr_list/Memory)
-        self._constants = []       # (name, value)
+        # SoC's Config/Constants/Regions
+        self.config      = {}
+        self.constants   = {}
+        self.mem_regions = {}
+        self.csr_regions = {}
 
         # Wishbone masters/slaves lists
         self._wb_masters = []
-        self._wb_slaves = []
+        self._wb_slaves  = []
 
         # CSR masters list
         self._csr_masters = []
@@ -190,10 +122,6 @@ class SoCCore(Module):
         if cpu_type == "None":
             cpu_type = None
 
-        # FIXME: On RocketChip, CSRs *must* be 64-bit aligned.
-        if cpu_type == "rocket" or cpu_type == "rocket64":
-            csr_alignment = 64
-
         if not with_wishbone:
             self.soc_mem_map["csr"]  = 0x00000000
 
@@ -201,25 +129,24 @@ class SoCCore(Module):
         self.cpu_variant = cpu.check_format_cpu_variant(cpu_variant)
 
         self.shadow_base = shadow_base
+        self.config["SHADOW_BASE"] = shadow_base
 
-        self.integrated_rom_size = integrated_rom_size
+        self.integrated_rom_size        = integrated_rom_size
         self.integrated_rom_initialized = integrated_rom_init != []
-        self.integrated_sram_size = integrated_sram_size
-        self.integrated_main_ram_size = integrated_main_ram_size
+        self.integrated_sram_size       = integrated_sram_size
+        self.integrated_main_ram_size   = integrated_main_ram_size
 
         assert csr_data_width in [8, 32, 64]
-        assert csr_alignment in [32, 64]
         assert 2**(csr_address_width + 2) <= 0x1000000
-        self.csr_data_width = csr_data_width
-        self.csr_alignment = csr_alignment
+        self.csr_data_width    = csr_data_width
         self.csr_address_width = csr_address_width
 
         self.with_ctrl = with_ctrl
 
-        self.with_uart = with_uart
+        self.with_uart     = with_uart
         self.uart_baudrate = uart_baudrate
 
-        self.with_wishbone = with_wishbone
+        self.with_wishbone           = with_wishbone
         self.wishbone_timeout_cycles = wishbone_timeout_cycles
 
         # Modules instances ------------------------------------------------------------------------
@@ -244,9 +171,8 @@ class SoCCore(Module):
             # Add the CPU
             self.add_cpu(cpu.CPUS[cpu_type](platform, self.cpu_variant))
 
-            # Override Memory Map (if needed by CPU)
-            if hasattr(self.cpu, "mem_map"):
-                self.soc_mem_map.update(self.cpu.mem_map)
+            # Update Memory Map (if defined by CPU)
+            self.soc_mem_map.update(self.cpu.mem_map)
 
             # Set reset address
             self.cpu.set_reset_address(self.soc_mem_map["rom"] if integrated_rom_size else cpu_reset_address)
@@ -259,15 +185,17 @@ class SoCCore(Module):
             # Add CPU CSR (dynamic)
             self.add_csr("cpu", allow_user_defined=True)
 
-            # Add CPU reserved interrupts
-            for _name, _id in self.cpu.reserved_interrupts.items():
+            # Add CPU interrupts
+            for _name, _id in self.cpu.interrupts.items():
                 self.add_interrupt(_name, _id)
 
             # Allow SoCController to reset the CPU
             if with_ctrl:
                 self.comb += self.cpu.reset.eq(self.ctrl.reset)
+        else:
+            self.add_cpu(cpu.CPUNone())
 
-        # Add user's interrupts (needs to be done after CPU reserved interrupts are allocated)
+        # Add user's interrupts (needs to be done after CPU interrupts are allocated)
         for _name, _id in self.interrupt_map.items():
             self.add_interrupt(_name, _id)
 
@@ -307,7 +235,7 @@ class SoCCore(Module):
         # Add Identifier
         if ident:
             if ident_version:
-                ident = ident + " " + version()
+                ident = ident + " " + get_version()
             self.submodules.identifier = identifier.Identifier(ident)
             self.add_csr("identifier_mem", allow_user_defined=True)
         self.config["CLOCK_FREQUENCY"] = int(clk_freq)
@@ -319,13 +247,16 @@ class SoCCore(Module):
             self.add_interrupt("timer0", allow_user_defined=True)
 
         # Add Wishbone to CSR bridge
-        self.config["CSR_DATA_WIDTH"] = self.csr_data_width
-        self.config["CSR_ALIGNMENT"]  = self.csr_alignment
+        csr_alignment = max(csr_alignment, self.cpu.data_width)
+        self.config["CSR_DATA_WIDTH"] = csr_data_width
+        self.config["CSR_ALIGNMENT"]  = csr_alignment
+        self.csr_data_width = csr_data_width
+        self.csr_alignment  = csr_alignment
         if with_wishbone:
             self.submodules.wishbone2csr = wishbone2csr.WB2CSR(
                 bus_csr=csr_bus.Interface(
-                    address_width=self.csr_address_width,
-                    data_width=self.csr_data_width))
+                    address_width = csr_address_width,
+                    data_width    = csr_data_width))
             self.add_csr_master(self.wishbone2csr.csr)
             self.register_mem("csr", self.soc_mem_map["csr"], self.wishbone2csr.wishbone, 0x1000000)
 
@@ -420,12 +351,11 @@ class SoCCore(Module):
     def add_memory_region(self, name, origin, length):
         def in_this_region(addr):
             return addr >= origin and addr < origin + length
-        for n, o, l in self._memory_regions:
-            l = 2**log2_int(l, False)
-            if n == name or in_this_region(o) or in_this_region(o+l-1):
+        for n, r in self.mem_regions.items():
+            r.length = 2**log2_int(r.length, False)
+            if n == name or in_this_region(r.origin) or in_this_region(r.origin + r.length - 1):
                 raise ValueError("Memory region conflict between {} and {}".format(n, name))
-
-        self._memory_regions.append((name, origin, length))
+        self.mem_regions[name] = SoCMemRegion(origin, length)
 
     def register_mem(self, name, address, interface, size=0x10000000):
         self.add_wb_slave(address, interface, size)
@@ -435,34 +365,23 @@ class SoCCore(Module):
         self.add_wb_slave(self.soc_mem_map["rom"], interface, rom_size)
         self.add_memory_region("rom", self.cpu.reset_address, rom_size)
 
-    def get_memory_regions(self):
-        return self._memory_regions
-
     def check_csr_range(self, name, addr):
         if addr >= 1<<(self.csr_address_width+2):
             raise ValueError("{} CSR out of range, increase csr_address_width".format(name))
 
     def check_csr_region(self, name, origin):
-        for n, o, l, obj in self._csr_regions:
-            if n == name or o == origin:
+        for n, r in self.csr_regions.items():
+            if n == name or r.origin == origin:
                 raise ValueError("CSR region conflict between {} and {}".format(n, name))
 
     def add_csr_region(self, name, origin, busword, obj):
         self.check_csr_region(name, origin)
-        self._csr_regions.append((name, origin, busword, obj))
-
-    def get_csr_regions(self):
-        return self._csr_regions
+        self.csr_regions[name] = SoCCSRRegion(origin, busword, obj)
 
     def add_constant(self, name, value=None):
-        self._constants.append((name, value))
-
-    def get_constants(self):
-        r = []
-        for _name, _id in sorted(self.soc_interrupt_map.items()):
-            r.append((_name.upper() + "_INTERRUPT", _id))
-        r += self._constants
-        return r
+        if name in self.constants.keys():
+            raise ValueError("Constant {} already declared.".format(name))
+        self.constants[name] = SoCConstant(value)
 
     def get_csr_dev_address(self, name, memory):
         if memory is not None:
@@ -486,11 +405,10 @@ class SoCCore(Module):
 
     def do_finalize(self):
         # Verify CPU has required memories
-        registered_mems = {regions[0] for regions in self._memory_regions}
         if self.cpu_type is not None:
-            for mem in "rom", "sram":
-                if mem not in registered_mems:
-                    raise FinalizeError("CPU needs \"{}\" to be registered with SoC.register_mem()".format(mem))
+            for name in "rom", "sram":
+                if name not in self.mem_regions.keys():
+                    raise FinalizeError("CPU needs \"{}\" to be registered with SoC.register_mem()".format(name))
 
         # Add the Wishbone Masters/Slaves interconnect
         if len(self._wb_masters):
@@ -502,9 +420,10 @@ class SoCCore(Module):
         # Collect and create CSRs
         self.submodules.csrbankarray = csr_bus.CSRBankArray(self,
             self.get_csr_dev_address,
-            data_width=self.csr_data_width,
-            address_width=self.csr_address_width,
-            alignment=self.csr_alignment)
+            data_width    = self.csr_data_width,
+            address_width = self.csr_address_width,
+            alignment     = self.csr_alignment
+        )
 
         # Add CSRs interconnect
         if len(self._csr_masters) != 0:
@@ -526,23 +445,23 @@ class SoCCore(Module):
 
         # Add CSRs / Config items to constants
         for name, constant in self.csrbankarray.constants:
-            self._constants.append(((name + "_" + constant.name).upper(), constant.value.value))
+            self.add_constant(name + "_" + constant.name, constant.value.value)
         for name, value in sorted(self.config.items(), key=itemgetter(0)):
-            self._constants.append(("CONFIG_" + name.upper(), value))
+            self.add_constant("CONFIG_" + name.upper(), value)
             if isinstance(value, str):
-                self._constants.append(("CONFIG_" + name.upper() + "_" + value, 1))
+                self.add_constant("CONFIG_" + name.upper() + "_" + value)
 
         # Connect interrupts
         if hasattr(self, "cpu"):
             if hasattr(self.cpu, "interrupt"):
                 for _name, _id in sorted(self.soc_interrupt_map.items()):
-                    if _name in self.cpu.reserved_interrupts.keys():
+                    if _name in self.cpu.interrupts.keys():
                         continue
                     if hasattr(self, _name):
                         module = getattr(self, _name)
                         assert hasattr(module, 'ev'), "Submodule %s does not have EventManager (xx.ev) module" % _name
                         self.comb += self.cpu.interrupt[_id].eq(module.ev.irq)
-
+                    self.constants[_name.upper() + "_INTERRUPT"] = _id
 
 # SoCCore arguments --------------------------------------------------------------------------------
 
