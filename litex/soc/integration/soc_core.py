@@ -191,7 +191,7 @@ class SoCCore(Module):
             cpu_type = None
 
         # FIXME: On RocketChip, CSRs *must* be 64-bit aligned.
-        if cpu_type == "rocket" or cpu_type == "rocket2":
+        if cpu_type == "rocket" or cpu_type == "rocket64":
             csr_alignment = 64
 
         if not with_wishbone:

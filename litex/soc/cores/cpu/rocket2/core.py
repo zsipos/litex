@@ -49,10 +49,10 @@ GCC_FLAGS = {
     "full":     "-march=rv64imafdc -mabi=lp64 ",
 }
 
-class Rocket2RV64(Module):
+class Rocket64(Module):
     @property
     def name(self):
-        return "rocket2"
+        return "rocket64"
 
     @property
     def endianness(self):

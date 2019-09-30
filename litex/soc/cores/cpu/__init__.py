@@ -9,7 +9,7 @@ from litex.soc.cores.cpu.picorv32 import PicoRV32
 from litex.soc.cores.cpu.vexriscv import VexRiscv
 from litex.soc.cores.cpu.minerva import Minerva
 from litex.soc.cores.cpu.rocket import RocketRV64
-from litex.soc.cores.cpu.rocket2 import Rocket2RV64
+from litex.soc.cores.cpu.rocket2 import Rocket64
 from litex.soc.cores.cpu.serv import SERV
 
 # CPUS ---------------------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ CPUS = {
     "vexriscv"   : VexRiscv,
     "minerva"    : Minerva,
     "rocket"     : RocketRV64,
-    "rocket2"    : Rocket2RV64,
+    "rocket64"   : Rocket64,
     "serv"       : SERV
 }
 

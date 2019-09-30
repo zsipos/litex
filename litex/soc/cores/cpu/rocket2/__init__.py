@@ -1,1 +1,1 @@
-from litex.soc.cores.cpu.rocket2.core import Rocket2RV64
+from litex.soc.cores.cpu.rocket2.core import Rocket64
