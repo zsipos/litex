@@ -266,21 +266,6 @@ class Rocket64(CPU):
         # add verilog sources
         self.add_sources(platform, variant)
 
-    def connect_sdram(self, soc, asaxi=True):
-        if asaxi:
-            port = soc.sdram.crossbar.get_port()
-            axi2native = LiteDRAMAXI2Native(self.mem2_axi, port)
-            self.submodules += axi2native
-        else:
-            self.mem2_wb = mem2_wb = wishbone.Interface(data_width=64, adr_width=29)
-            self.ibus2 = ibus2 = wishbone.Interface()
-            mem2_a2w = ResetInserter()(
-                axi.AXI2Wishbone(self.mem2_axi, mem2_wb, base_address=0))
-            self.comb += mem2_a2w.reset.eq(ResetSignal() | self.reset)
-            mem2_dc = wishbone.Converter(mem2_wb, ibus2)
-            self.submodules += mem2_a2w, mem2_dc
-            soc.add_wb_master(ibus2)
-
     def set_reset_address(self, reset_address):
         assert not hasattr(self, "reset_address")
         self.reset_address = reset_address
@@ -299,6 +284,26 @@ class Rocket64(CPU):
             "AsyncResetReg.v",
             "EICG_wrapper.v",
         )
+
+    def do_finalize(self):
+        assert hasattr(self, "reset_address")
+        self.specials += Instance("LitexRocketSystem", **self.cpu_params)
+
+    def connect_sdram(self, soc, asaxi=True):
+        print(self.name, ": sdram connected.")
+        if asaxi:
+            port = soc.sdram.crossbar.get_port()
+            axi2native = LiteDRAMAXI2Native(self.mem2_axi, port)
+            self.submodules += axi2native
+        else:
+            self.mem2_wb = mem2_wb = wishbone.Interface(data_width=64, adr_width=29)
+            self.ibus2 = ibus2 = wishbone.Interface()
+            mem2_a2w = ResetInserter()(
+                axi.AXI2Wishbone(self.mem2_axi, mem2_wb, base_address=0))
+            self.comb += mem2_a2w.reset.eq(ResetSignal() | self.reset)
+            mem2_dc = wishbone.Converter(mem2_wb, ibus2)
+            self.submodules += mem2_a2w, mem2_dc
+            soc.add_wb_master(ibus2)
 
     @staticmethod
     def build_dts(variant = "standard",
