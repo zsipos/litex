@@ -17,21 +17,6 @@ class WB2CSR(Module):
             bus_csr = csr_bus.Interface()
         self.csr = bus_csr
 
-        # adi: new algo causes conflicts with axi dram
-
-        self.sync += [
-            self.csr.we.eq(0),
-            self.csr.dat_w.eq(self.wishbone.dat_w),
-            self.csr.adr.eq(self.wishbone.adr),
-            self.wishbone.dat_r.eq(self.csr.dat_r)
-        ]
-        self.sync += timeline(self.wishbone.cyc & self.wishbone.stb, [
-            (1, [self.csr.we.eq(self.wishbone.we)]),
-            (2, [self.wishbone.ack.eq(1)]),
-            (3, [self.wishbone.ack.eq(0)])
-        ])
-        return
-
         # # #
 
         self.comb += [
@@ -42,7 +27,6 @@ class WB2CSR(Module):
         fsm = FSM(reset_state="WRITE-READ")
         self.submodules += fsm
         fsm.act("WRITE-READ",
-            self.wishbone.ack.eq(0),
             If(self.wishbone.cyc & self.wishbone.stb,
                 self.csr.adr.eq(self.wishbone.adr),
                 self.csr.we.eq(self.wishbone.we),
