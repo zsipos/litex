@@ -99,6 +99,16 @@ _io = [
         Subsignal("int_n", Pins("D8")),
         IOStandard("LVCMOS33")
      ),
+
+    ("sdpwdn", 0, Pins("E2"), IOStandard("LVCMOS33")),
+
+    ("spi", 1,
+        Subsignal("sclk", Pins("B1")),
+        Subsignal("mosi", Pins("C1")),
+        Subsignal("miso", Pins("C2")),
+        Subsignal("ss_n", Pins("D2")),
+        IOStandard("LVCMOS33")
+    ),
 ]
 
 # Platform -----------------------------------------------------------------------------------------
