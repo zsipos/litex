@@ -287,14 +287,14 @@ class Rocket64(CPU):
 
     def do_finalize(self):
         assert hasattr(self, "reset_address")
+        assert hasattr(self, "axi2native") or hasattr(self, "ibus2")
         self.specials += Instance("LitexRocketSystem", **self.cpu_params)
 
     def connect_sdram(self, soc, asaxi=True):
-        print(self.name, ": sdram connected.")
         if asaxi:
             port = soc.sdram.crossbar.get_port()
             axi2native = LiteDRAMAXI2Native(self.mem2_axi, port)
-            self.submodules += axi2native
+            self.submodules.axi2native = axi2native
         else:
             self.mem2_wb = mem2_wb = wishbone.Interface(data_width=64, adr_width=29)
             self.ibus2 = ibus2 = wishbone.Interface()
