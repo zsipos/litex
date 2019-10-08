@@ -13,7 +13,7 @@ import freechips.rocketchip.tile.RocketTileParams
 class WithLitexMemPorts extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
     base = x"1000_0000", //litex bios base
-    size = x"3000_0000", //up to dram start
+    size = x"2000_0000", //up to io range
     beatBytes = site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
   case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
