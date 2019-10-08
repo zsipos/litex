@@ -50,7 +50,7 @@ crt_init:
 	csrw mtvec, a0
 
 	csrr t0, mhartid
-	bne t0, zero, hart_wait // run the bios only on first hart
+	bnez t0, hart_wait // run the bios only on first hart
 
 bss_init:
 	la a0, _fbss
@@ -63,7 +63,7 @@ bss_loop:
 bss_done:
 	call plic_init // initialize external interrupt controller
 	li a0, 0x800   // external interrupt sources only (using LiteX timer);
-		       // NOTE: must still enable mstatus.MIE!
+		           // NOTE: must still enable mstatus.MIE!
 	csrw mie, a0
 	call main
 inf_loop:
