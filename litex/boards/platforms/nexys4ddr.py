@@ -102,7 +102,7 @@ _io = [
 
     ("sdpwdn", 0, Pins("E2"), IOStandard("LVCMOS33")),
 
-    ("spi", 1,
+    ("sdspi", 1,
         Subsignal("sclk", Pins("B1")),
         Subsignal("mosi", Pins("C1")),
         Subsignal("miso", Pins("C2")),
