@@ -27,7 +27,7 @@ class WithLitexMMIOPort extends Config((site, here, up) => {
   case ExtBus => Some(MasterPortParams(
     base = x"8000_0000", //litex shadow base
     size = x"8000_0000", //up to the end
-    beatBytes = 4,
+    beatBytes = site(MemoryBusKey).beatBytes,
     idBits = 4))
 })
 

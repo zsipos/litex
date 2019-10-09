@@ -82,17 +82,17 @@ class Rocket64(CPU):
         self.interrupt = Signal(8)
 
         # memory bus up to real dram start
-        self.mem_axi = mem_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
-        # memory from real dram start
-        self.mem2_axi = mem2_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
-        # io bus
-        self.mmio_axi = mmio_axi = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
+        self.mem_axi  = mem_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
+        self.mmio_axi = mmio_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
 
-        self.mem_wb = mem_wb = wishbone.Interface(data_width=64, adr_width=29)
-        self.mmio_wb = mmio_wb = wishbone.Interface(data_width=32, adr_width=30)
+        self.mem_wb  = mem_wb = wishbone.Interface(data_width=64, adr_width=29)
+        self.mmio_wb = mmio_wb = wishbone.Interface(data_width=64, adr_width=29)
 
         self.ibus = ibus = wishbone.Interface()
-        self.dbus = dbus = mmio_wb
+        self.dbus = dbus = wishbone.Interface()
+
+        # memory from real dram start
+        self.mem2_axi = mem2_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
 
         # # #
 
@@ -260,8 +260,9 @@ class Rocket64(CPU):
 
         # down-convert wishbone from 64 to 32 bit data width
         mem_dc = wishbone.Converter(mem_wb, ibus)
+        mmio_dc = wishbone.Converter(mmio_wb, dbus)
 
-        self.submodules += mem_a2w, mem_dc, mmio_a2w
+        self.submodules += mem_a2w, mem_dc, mmio_a2w, mmio_dc
 
         # add verilog sources
         self.add_sources(platform, variant)
