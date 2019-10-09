@@ -76,7 +76,7 @@ class EthernetSoC(BaseSoC):
     mem_map.update(BaseSoC.mem_map)
 
     def __init__(self, **kwargs):
-        BaseSoC.__init__(self, integrated_rom_size=0x10000, **kwargs)
+        BaseSoC.__init__(self, **kwargs)
 
         self.submodules.ethphy = LiteEthPHYRMII(self.platform.request("eth_clocks"),
                                                 self.platform.request("eth"))
