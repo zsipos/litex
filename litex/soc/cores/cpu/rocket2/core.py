@@ -56,6 +56,7 @@ class Rocket64(CPU):
     endianness           = "little"
     gcc_triple           = ("riscv64-unknown-linux-gnu")
     linker_output_format = "elf64-littleriscv"
+    io_regions           = {0x80000000:0x80000000} # origin, length
 
     @property
     def mem_map(self):
@@ -63,7 +64,7 @@ class Rocket64(CPU):
         return {
             "rom"  : 0x10000000,
             "sram" : 0x11000000,
-            "csr"  : 0x12000000,
+            "csr"  : 0x92000000,
         }
 
     @property
