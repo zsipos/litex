@@ -52,6 +52,16 @@ class SoCSDRAM(SoCCore):
             clk_freq        = self.clk_freq,
             **kwargs)
 
+        # CPU <--> LiteDRAM ------------------------------------------------------------------------
+        if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
+            self.cpu.connect_sdram(self)
+            main_ram_size = 2 ** (geom_settings.bankbits +
+                                  geom_settings.rowbits +
+                                  geom_settings.colbits) * phy.settings.databits // 8
+            main_ram_size = min(main_ram_size, 0x40000000)  # FIXME: limit to 1GB for now
+            self.add_memory_region("main_ram", self.mem_map["main_ram"], main_ram_size)
+            return
+
         # SoC <--> L2 Cache <--> LiteDRAM ----------------------------------------------------------
         if self.with_wishbone:
             # LiteDRAM port ------------------------------------------------------------------------
@@ -62,7 +72,7 @@ class SoCSDRAM(SoCCore):
             main_ram_size = 2**(geom_settings.bankbits +
                                 geom_settings.rowbits +
                                 geom_settings.colbits)*phy.settings.databits//8
-            main_ram_size = min(main_ram_size, 0x20000000) # FIXME: limit to 512MB for now
+            main_ram_size = min(main_ram_size, 0x40000000) # FIXME: limit to 1GB for now
 
             l2_size = max(self.l2_size, int(2*port.data_width/8)) # L2 has a minimal size, use it if lower
             l2_size = 2**int(log2(l2_size))                       # Round to nearest power of 2
@@ -86,10 +96,6 @@ class SoCSDRAM(SoCCore):
 
             # L2 Cache <--> LiteDRAM bridge --------------------------------------------------------
             self.submodules.wishbone_bridge = LiteDRAMWishbone2Native(self.l2_cache.slave, port)
-
-        # connect cpu to sdram
-        if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
-            self.cpu.connect_sdram(self)
 
     def do_finalize(self):
         if not self.integrated_main_ram_size:
