@@ -13,21 +13,21 @@ import freechips.rocketchip.tile.RocketTileParams
 class WithLitexMemPorts extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
     base = x"1000_0000", //litex bios base
-    size = x"2000_0000", //up to io range
+    size = x"1000_0000", //litex bios size
     beatBytes = site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
   case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
-    base = x"4000_0000", //litex dram base
-    size = x"4000_0000", //up to litex shadow base
+    base = x"8000_0000", //litex dram base
+    size = x"8000_0000", //up to end
     beatBytes = site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
 })
 
 class WithLitexMMIOPort extends Config((site, here, up) => {
   case ExtBus => Some(MasterPortParams(
-    base = x"8000_0000", //litex shadow base
-    size = x"8000_0000", //up to the end
-    beatBytes = site(MemoryBusKey).beatBytes,
+    base = x"2000_0000", //litex io base
+    size = x"6000_0000", //up to dram base
+    beatBytes = 4, //site(MemoryBusKey).beatBytes,
     idBits = 4))
 })
 
@@ -39,13 +39,13 @@ class WithNMediumCores(n: Int) extends Config((site, here, up) => {
         mulEarlyOut = true,
         divEarlyOut = true))),
       dcache = Some(DCacheParams(
-        nWays = 8,
+        //nWays = 8,
         //nTLBEntries = 64,
         rowBits = site(SystemBusKey).beatBits,
         nMSHRs = 0,
         blockBytes = site(CacheBlockBytes))),
       icache = Some(ICacheParams(
-        nWays = 8,
+        //nWays = 8,
         //nTLBEntries = 64,
         rowBits = site(SystemBusKey).beatBits,
         blockBytes = site(CacheBlockBytes))))

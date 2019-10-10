@@ -56,15 +56,17 @@ class Rocket64(CPU):
     endianness           = "little"
     gcc_triple           = ("riscv64-unknown-linux-gnu")
     linker_output_format = "elf64-littleriscv"
-    io_regions           = {0x80000000:0x80000000} # origin, length
+    io_regions           = {0x20000000:0x60000000} # origin, length
 
     @property
     def mem_map(self):
         # Rocket reserves the first 256Mbytes for internal use, so we must change default mem_map.
         return {
-            "rom"  : 0x10000000,
-            "sram" : 0x11000000,
-            "csr"  : 0x92000000,
+            "rom"      : 0x10000000,
+            "sram"     : 0x11000000,
+            "csr"      : 0x20000000,
+            "ethmac"   : 0x30000000,
+            "main_ram" : 0x80000000,
         }
 
     @property
@@ -82,15 +84,15 @@ class Rocket64(CPU):
         self.reset     = Signal()
         self.interrupt = Signal(8)
 
-        # memory bus up to real dram start
-        self.mem_axi  = mem_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
-        self.mmio_axi = mmio_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
+        # memory bus for bios
+        self.mem_axi  = mem_axi  = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
+        self.mmio_axi = mmio_axi = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
 
-        self.mem_wb  = mem_wb = wishbone.Interface(data_width=64, adr_width=29)
-        self.mmio_wb = mmio_wb = wishbone.Interface(data_width=64, adr_width=29)
+        self.mem_wb  = mem_wb  = wishbone.Interface(data_width=64, adr_width=29)
+        self.mmio_wb = mmio_wb = wishbone.Interface(data_width=32, adr_width=30)
 
         self.ibus = ibus = wishbone.Interface()
-        self.dbus = dbus = wishbone.Interface()
+        self.dbus = mmio_wb
 
         # memory from real dram start
         self.mem2_axi = mem2_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
@@ -251,7 +253,7 @@ class Rocket64(CPU):
         )
 
         # adapt axi interfaces to wishbone
-        mem_a2w = ResetInserter()(axi.AXI2Wishbone(mem_axi, mem_wb, base_address=0))
+        mem_a2w  = ResetInserter()(axi.AXI2Wishbone(mem_axi, mem_wb, base_address=0))
         mmio_a2w = ResetInserter()(axi.AXI2Wishbone(mmio_axi, mmio_wb, base_address=0))
         # NOTE: AXI2Wishbone FSMs must be reset with the CPU!
         self.comb += [
@@ -260,10 +262,9 @@ class Rocket64(CPU):
         ]
 
         # down-convert wishbone from 64 to 32 bit data width
-        mem_dc = wishbone.Converter(mem_wb, ibus)
-        mmio_dc = wishbone.Converter(mmio_wb, dbus)
+        mem_dc  = wishbone.Converter(mem_wb, ibus)
 
-        self.submodules += mem_a2w, mem_dc, mmio_a2w, mmio_dc
+        self.submodules += mem_a2w, mem_dc, mmio_a2w
 
         # add verilog sources
         self.add_sources(platform, variant)
@@ -310,7 +311,7 @@ class Rocket64(CPU):
     @staticmethod
     def build_dts(variant = "standard",
                   bootargs="",
-                  sdram_size=0x40000000,
+                  sdram_size=0x80000000,
                   timebase_frequency=600000,
                   devices="//insert your devices here\n"):
         if len(bootargs):
@@ -319,7 +320,7 @@ class Rocket64(CPU):
             dtslines = f.readlines()
         # find dram label
         for i in dtslines:
-            if i.find("memory@40000000") > -1:
+            if i.find("memory@80000000") > -1:
                 dramlabel = i.split(":", 1)[0].lstrip()
                 break
         inmemory1 = False
@@ -346,7 +347,7 @@ class Rocket64(CPU):
             elif i.find("riscv,isa =") > -1:
                 # cheat riscv-pk
                 dts += i.split("=", 1)[0] + '= "rv64imafdc";\n'
-            elif i.find("mmio-port-axi4@80000000") > -1:
+            elif i.find("mmio-port-axi4@20000000") > -1:
                 # add our devices here
                 inmemory1 = True
                 dts += devices
@@ -354,13 +355,13 @@ class Rocket64(CPU):
                 inmemory1 = True
             elif inmemory1 and i.find("};") > -1:
                 inmemory1 = False
-            elif i.find("memory@40000000") > -1:
+            elif i.find("memory@80000000") > -1:
                 inmemory2 = True
                 dts += i
             elif inmemory2 and i.find("reg =") > -1:
                 # fix memory size
                 inmemory2 = False
-                dts += i.split("=", 1)[0] + "= <0x40000000 " + hex(sdram_size) + ">;\n"
+                dts += i.split("=", 1)[0] + "= <0x80000000 " + hex(sdram_size) + ">;\n"
             elif not inmemory1:
                     dts += i
         return dts
