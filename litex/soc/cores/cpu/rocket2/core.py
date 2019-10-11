@@ -85,16 +85,16 @@ class Rocket64(CPU):
         self.interrupt = Signal(8)
 
         # memory bus for bios
-        self.mem_axi  = mem_axi  = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
-        self.mmio_axi = mmio_axi = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
+        self.mem_axi   = mem_axi  = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
+        self.mmio_axi  = mmio_axi = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
 
-        self.mem_wb  = mem_wb  = wishbone.Interface(data_width=64, adr_width=29)
-        self.mmio_wb = mmio_wb = wishbone.Interface(data_width=32, adr_width=30)
+        self.mem_wb    = mem_wb  = wishbone.Interface(data_width=32, adr_width=30)
+        self.mmio_wb   = mmio_wb = wishbone.Interface(data_width=32, adr_width=30)
 
-        self.buses = [mem_wb, mmio_wb]
+        self.buses     = [mem_wb, mmio_wb]
 
-        # memory from real dram start
-        self.mem2_axi = mem2_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
+        # memory from real dram start, accessed only by axi4
+        self.mem2_axi  = mem2_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
 
         # # #
 
@@ -296,10 +296,9 @@ class Rocket64(CPU):
             axi2native = LiteDRAMAXI2Native(self.mem2_axi, port)
             self.submodules.axi2native = axi2native
         else:
-            self.mem2_wb = mem2_wb = wishbone.Interface(data_width=64, adr_width=29)
-            self.ibus2 = ibus2 = wishbone.Interface()
-            mem2_a2w = ResetInserter()(
-                axi.AXI2Wishbone(self.mem2_axi, mem2_wb, base_address=0))
+            mem2_wb = wishbone.Interface(data_width=64, adr_width=29)
+            ibus2   = wishbone.Interface()
+            mem2_a2w = ResetInserter()(axi.AXI2Wishbone(self.mem2_axi, mem2_wb, base_address=0))
             self.comb += mem2_a2w.reset.eq(ResetSignal() | self.reset)
             mem2_dc = wishbone.Converter(mem2_wb, ibus2)
             self.submodules += mem2_a2w, mem2_dc
@@ -344,7 +343,7 @@ class Rocket64(CPU):
             elif i.find("riscv,isa =") > -1:
                 # cheat riscv-pk
                 dts += i.split("=", 1)[0] + '= "rv64imafdc";\n'
-            elif i.find("mmio-port-axi4@20000000") > -1:
+            elif i.find("mmio-port-axi4@") > -1:
                 # add our devices here
                 inmemory1 = True
                 dts += devices

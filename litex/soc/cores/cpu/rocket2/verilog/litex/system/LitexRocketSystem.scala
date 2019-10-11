@@ -15,6 +15,7 @@ import freechips.rocketchip.util.{DontTouch, HeterogeneousBag}
 
 case object ExtMem2 extends Field[Option[MemoryPortParams]](None)
 
+/** Adds a second port to the system intended to master an AXI4 DRAM controller. */
 trait CanHaveMasterAXI4MemPort2 { this: BaseSubsystem =>
   val module: CanHaveMasterAXI4MemPort2ModuleImp
 
