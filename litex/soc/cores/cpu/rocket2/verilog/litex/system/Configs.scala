@@ -8,7 +8,7 @@ import freechips.rocketchip.config.Config
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.rocket.{DCacheParams, ICacheParams, MulDivParams, RocketCoreParams}
-import freechips.rocketchip.tile.RocketTileParams
+import freechips.rocketchip.tile.{RocketTileParams, XLen}
 
 class WithLitexMemPorts extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
@@ -19,7 +19,7 @@ class WithLitexMemPorts extends Config((site, here, up) => {
   case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
     base = x"8000_0000", //litex dram base
     size = x"8000_0000", //up to end
-    beatBytes = site(MemoryBusKey).beatBytes,
+    beatBytes = 8, //site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
 })
 
@@ -53,6 +53,14 @@ class WithNMediumCores(n: Int) extends Config((site, here, up) => {
   }
 })
 
+class With64Bits extends Config((site, here, up) => {
+  case XLen => 64
+})
+
+class With32Bits extends Config((site, here, up) => {
+  case XLen => 32
+})
+
 class BaseLitexConfig extends Config(
   new WithLitexMemPorts() ++
   new WithLitexMMIOPort() ++
@@ -62,17 +70,32 @@ class BaseLitexConfig extends Config(
   new BaseConfig
 )
 
-class LitexConfig extends Config(
+class LitexConfig64 extends Config(
+  new With64Bits ++
   new WithNSmallCores(1) ++
   new BaseLitexConfig
 )
 
-class LitexLinuxConfig extends Config(
+class LitexLinuxConfig64 extends Config(
+  new With64Bits ++
   new WithNMediumCores(1) ++
   new BaseLitexConfig
 )
 
-class LitexFullConfig extends Config(
+class LitexFullConfig64 extends Config(
+  new With64Bits ++
   new WithNBigCores(1) ++
+  new BaseLitexConfig
+)
+
+class LitexConfig32 extends Config(
+  new With32Bits ++
+  new WithNSmallCores(1) ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfig32 extends Config(
+  new With32Bits ++
+  new WithNMediumCores(1) ++
   new BaseLitexConfig
 )

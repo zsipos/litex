@@ -128,7 +128,7 @@ class Builder:
                         self.soc.sdram.controller.settings.phy,
                         self.soc.sdram.controller.settings.timing))
 
-        if self.soc.cpu_type == "rocket64":
+        if self.soc.cpu_type in ["rocket32", "rocket64"]:
             if hasattr(self.soc, "get_dts"):
                 dts = self.soc.get_dts()
             else:

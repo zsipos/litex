@@ -39,24 +39,31 @@ from litex.soc.cores.cpu import CPU
 from litedram.frontend.axi import *
 
 CPU_VARIANTS = {
-    "standard": "freechips.rocketchip.system.LitexConfig",
-    "linux":    "freechips.rocketchip.system.LitexLinuxConfig",
-    "full":     "freechips.rocketchip.system.LitexFullConfig",
+    32 : {
+        "standard" : "freechips.rocketchip.system.LitexConfig32",
+        "linux"    : "freechips.rocketchip.system.LitexLinuxConfig32",
+    },
+    64 : {
+        "standard" : "freechips.rocketchip.system.LitexConfig64",
+        "linux"    : "freechips.rocketchip.system.LitexLinuxConfig64",
+        "full"     : "freechips.rocketchip.system.LitexFullConfig64",
+    }
 }
 
 GCC_FLAGS = {
-    "standard": "-march=rv64imac   -mabi=lp64 ",
-    "linux":    "-march=rv64imac   -mabi=lp64 ",
-    "full":     "-march=rv64imafdc -mabi=lp64 ",
+    32 : {
+        "standard" : "-march=rv32imac   -mabi=ilp32 ",
+        "linux"    : "-march=rv32imac   -mabi=ilp32 ",
+    },
+    64 : {
+        "standard" : "-march=rv64imac   -mabi=lp64 ",
+        "linux"    : "-march=rv64imac   -mabi=lp64 ",
+        "full"     : "-march=rv64imafdc -mabi=lp64 ",
+    }
 }
 
-class Rocket64(CPU):
-    name                 = "rocket64"
-    data_width           = 64
-    endianness           = "little"
-    gcc_triple           = ("riscv64-unknown-linux-gnu")
-    linker_output_format = "elf64-littleriscv"
-    io_regions           = {0x20000000:0x60000000} # origin, length
+class Rocket(CPU):
+    io_regions = {0x20000000:0x60000000} # origin, length
 
     @property
     def mem_map(self):
@@ -72,12 +79,12 @@ class Rocket64(CPU):
     @property
     def gcc_flags(self):
         flags =  "-mno-save-restore "
-        flags += GCC_FLAGS[self.variant]
+        flags += GCC_FLAGS[self.data_width][self.variant]
         flags += "-D__rocket__ "
         return flags
 
-    def __init__(self, platform, variant="standard"):
-        assert variant in CPU_VARIANTS, "Unsupported variant %s" % variant
+    def __init__(self, platform, variant):
+        assert variant in CPU_VARIANTS[self.data_width], "Unsupported variant %s" % variant
 
         self.platform  = platform
         self.variant   = variant
@@ -271,15 +278,14 @@ class Rocket64(CPU):
         self.reset_address = reset_address
         assert reset_address == 0x10000000, "cpu_reset_addr hardcoded in during elaboration!"
 
-    @staticmethod
-    def add_sources(platform, variant="standard"):
+    def add_sources(self, platform, variant):
         platform.add_sources(
-            get_gdir(),
-            CPU_VARIANTS[variant] + ".v",
-            CPU_VARIANTS[variant] + ".behav_srams.v",
+            _get_gdir(),
+            CPU_VARIANTS[self.data_width][variant] + ".v",
+            CPU_VARIANTS[self.data_width][variant] + ".behav_srams.v",
         )
         platform.add_sources(
-            os.path.join(get_vdir(), "vsrc"),
+            os.path.join(_get_vdir(), "vsrc"),
             "plusarg_reader.v",
             "AsyncResetReg.v",
             "EICG_wrapper.v",
@@ -304,15 +310,15 @@ class Rocket64(CPU):
             self.submodules += mem2_a2w, mem2_dc
             soc.add_wb_master(ibus2)
 
-    @staticmethod
-    def build_dts(variant = "standard",
+    def build_dts(self,
+                  variant="standard",
                   bootargs="",
                   sdram_size=0x80000000,
                   timebase_frequency=600000,
                   devices="//insert your devices here\n"):
         if len(bootargs):
             bootargs = " " + bootargs
-        with open(os.path.join(get_gdir(), CPU_VARIANTS[variant] + ".dts"), "r") as f:
+        with open(os.path.join(_get_gdir(), CPU_VARIANTS[self.data_width][variant] + ".dts"), "r") as f:
             dtslines = f.readlines()
         # find dram label
         for i in dtslines:
@@ -329,7 +335,7 @@ class Rocket64(CPU):
                 # insert before cpus section
                 tabs = i.split("L", 1)[0]
                 dts += tabs + "chosen {\n"
-                dts += tabs + '\tbootargs = "earlycon=sbi console=hvc0 swiotlb=noforce' + bootargs +'";\n'
+                dts += tabs + '\tbootargs = "earlycon=sbi console=hvc0 swiotlb=noforce' + bootargs + '";\n'
                 dts += tabs + "};\n";
                 dts += i
             elif i.find("cpu@0") > -1:
@@ -342,7 +348,7 @@ class Rocket64(CPU):
                 dts += i.split("=", 1)[0] + "= <&" + dramlabel + ">;\n"
             elif i.find("riscv,isa =") > -1:
                 # cheat riscv-pk
-                dts += i.split("=", 1)[0] + '= "rv64imafdc";\n'
+                dts += i.split("=", 1)[0] + '= "rv' + str(self.data_width) + 'imafdc";\n'
             elif i.find("mmio-port-axi4@") > -1:
                 # add our devices here
                 inmemory1 = True
@@ -359,11 +365,34 @@ class Rocket64(CPU):
                 inmemory2 = False
                 dts += i.split("=", 1)[0] + "= <0x80000000 " + hex(sdram_size) + ">;\n"
             elif not inmemory1:
-                    dts += i
+                dts += i
         return dts
 
-def get_vdir():
+
+class Rocket64(Rocket):
+    name                 = "rocket64"
+    data_width           = 64
+    endianness           = "little"
+    gcc_triple           = ("riscv64-unknown-linux-gnu")
+    linker_output_format = "elf64-littleriscv"
+
+    def __init__(self, platform, variant="standard"):
+        Rocket.__init__(self, platform, variant)
+
+
+class Rocket32(Rocket):
+    name                 = "rocket32"
+    data_width           = 32
+    endianness           = "little"
+    gcc_triple           = ("riscv64-unknown-linux-gnu")
+    linker_output_format = "elf32-littleriscv"
+
+    def __init__(self, platform, variant="standard"):
+        Rocket.__init__(self, platform, variant)
+
+
+def _get_vdir():
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), "verilog")
 
-def get_gdir():
-    return os.path.join(get_vdir(), "rocket-chip", "vsim", "generated-src")
+def _get_gdir():
+    return os.path.join(_get_vdir(), "rocket-chip", "vsim", "generated-src")
