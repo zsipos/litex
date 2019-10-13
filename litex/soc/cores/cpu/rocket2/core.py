@@ -320,9 +320,12 @@ class Rocket(CPU):
             bootargs = " " + bootargs
         with open(os.path.join(_get_gdir(), CPU_VARIANTS[self.data_width][variant] + ".dts"), "r") as f:
             dtslines = f.readlines()
+
+        dram_search = "memory@" + hex(self.mem_map["main_ram"])[2:]
+        bios_search = "memory@" + hex(self.mem_map["rom"])[2:]
         # find dram label
         for i in dtslines:
-            if i.find("memory@80000000") > -1:
+            if i.find(dram_search) > -1:
                 dramlabel = i.split(":", 1)[0].lstrip()
                 break
         inmemory1 = False
@@ -353,17 +356,17 @@ class Rocket(CPU):
                 # add our devices here
                 inmemory1 = True
                 dts += devices
-            elif i.find("memory@10000000") > -1:
+            elif i.find(bios_search) > -1:
                 inmemory1 = True
             elif inmemory1 and i.find("};") > -1:
                 inmemory1 = False
-            elif i.find("memory@80000000") > -1:
+            elif i.find(dram_search) > -1:
                 inmemory2 = True
                 dts += i
             elif inmemory2 and i.find("reg =") > -1:
                 # fix memory size
                 inmemory2 = False
-                dts += i.split("=", 1)[0] + "= <0x80000000 " + hex(sdram_size) + ">;\n"
+                dts += i.split("=", 1)[0] + "= <" + hex(self.mem_map["main_ram"]) + " " + hex(sdram_size) + ">;\n"
             elif not inmemory1:
                 dts += i
         return dts
