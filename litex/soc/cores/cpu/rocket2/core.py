@@ -298,7 +298,7 @@ class Rocket(CPU):
 
     def connect_sdram(self, soc, asaxi=True):
         if asaxi:
-            port = soc.sdram.crossbar.get_port()
+            port = soc.sdram.crossbar.get_port(data_width=64)
             axi2native = LiteDRAMAXI2Native(self.mem2_axi, port)
             self.submodules.axi2native = axi2native
         else:
