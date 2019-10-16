@@ -55,12 +55,14 @@ class SoCSDRAM(SoCCore):
         # CPU <--> LiteDRAM ------------------------------------------------------------------------
         if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
             self.cpu.connect_sdram(self)
-            main_ram_size = 2 ** (geom_settings.bankbits +
-                                  geom_settings.rowbits +
-                                  geom_settings.colbits) * phy.settings.databits // 8
-            main_ram_size = min(main_ram_size, 0x80000000)
-            self.add_memory_region("main_ram", self.mem_map["main_ram"], main_ram_size)
-            return
+            if hasattr(self, "no_wishbone_sdram") and self.no_wishbone_sdram:
+                # do not connect the sdram to the SoC wishbone bus, just register memory region.
+                main_ram_size = 2 ** (geom_settings.bankbits +
+                                      geom_settings.rowbits +
+                                      geom_settings.colbits) * phy.settings.databits // 8
+                main_ram_size = min(main_ram_size, 0x80000000)
+                self.add_memory_region("main_ram", self.mem_map["main_ram"], main_ram_size)
+                return
 
         # SoC <--> L2 Cache <--> LiteDRAM ----------------------------------------------------------
         if self.with_wishbone:
