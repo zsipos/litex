@@ -132,7 +132,6 @@ class Builder:
         name_dtb = os.path.join(generated_dir, "devicetree.dtb")
         if hasattr(self.soc, "get_dts"):
             dts = self.soc.get_dts()
-            dts = ""
             write_to_file(name_dts, dts)
             os.system("dtc -I dts " + name_dts + " -O dtb -o " + name_dtb)
         else:
