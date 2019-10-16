@@ -10,7 +10,9 @@ import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.rocket.{DCacheParams, ICacheParams, MulDivParams, RocketCoreParams}
 import freechips.rocketchip.tile.{RocketTileParams, XLen}
 
-class WithLitexMemPorts extends Config((site, here, up) => {
+// memory width = 64
+
+class WithLitexMemPortsMem64 extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
     base = x"1000_0000", //litex bios base
     size = x"1000_0000", //litex bios size
@@ -20,6 +22,36 @@ class WithLitexMemPorts extends Config((site, here, up) => {
     base = x"8000_0000", //litex dram base
     size = x"8000_0000", //up to end
     beatBytes = 8, //site(MemoryBusKey).beatBytes,
+    idBits = 4), 1))
+})
+
+// memory width = 128
+
+class WithLitexMemPortsMem128 extends Config((site, here, up) => {
+  case ExtMem => Some(MemoryPortParams(MasterPortParams(
+    base = x"1000_0000", //litex bios base
+    size = x"1000_0000", //litex bios size
+    beatBytes = 4, //site(MemoryBusKey).beatBytes,
+    idBits = 4), 1))
+  case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
+    base = x"8000_0000", //litex dram base
+    size = x"8000_0000", //up to end
+    beatBytes = 16, //site(MemoryBusKey).beatBytes,
+    idBits = 4), 1))
+})
+
+// memory width = 256
+
+class WithLitexMemPortsMem256 extends Config((site, here, up) => {
+  case ExtMem => Some(MemoryPortParams(MasterPortParams(
+    base = x"1000_0000", //litex bios base
+    size = x"1000_0000", //litex bios size
+    beatBytes = 4, //site(MemoryBusKey).beatBytes,
+    idBits = 4), 1))
+  case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
+    base = x"8000_0000", //litex dram base
+    size = x"8000_0000", //up to end
+    beatBytes = 32, //site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
 })
 
@@ -62,40 +94,120 @@ class With32Bits extends Config((site, here, up) => {
 })
 
 class BaseLitexConfig extends Config(
-  new WithLitexMemPorts() ++
-  new WithLitexMMIOPort() ++
+  new WithLitexMMIOPort ++
   new WithNoSlavePort ++
   new WithNExtTopInterrupts(8) ++
   new WithoutTLMonitors ++
   new BaseConfig
 )
 
-class LitexConfig64 extends Config(
+// memory width = 64
+
+class LitexConfig64Mem64 extends Config(
   new With64Bits ++
   new WithNSmallCores(1) ++
+  new WithLitexMemPortsMem64() ++
   new BaseLitexConfig
 )
 
-class LitexLinuxConfig64 extends Config(
+class LitexLinuxConfig64Mem64 extends Config(
   new With64Bits ++
   new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem64 ++
   new BaseLitexConfig
 )
 
-class LitexFullConfig64 extends Config(
+class LitexFullConfig64Mem64 extends Config(
   new With64Bits ++
   new WithNBigCores(1) ++
+  new WithLitexMemPortsMem64 ++
   new BaseLitexConfig
 )
 
-class LitexConfig32 extends Config(
+class LitexConfig32Mem64 extends Config(
   new With32Bits ++
   new WithNSmallCores(1) ++
+  new WithLitexMemPortsMem64 ++
   new BaseLitexConfig
 )
 
-class LitexLinuxConfig32 extends Config(
+class LitexLinuxConfig32Mem64 extends Config(
   new With32Bits ++
   new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem64 ++
+  new BaseLitexConfig
+)
+
+// memory width = 128
+
+class LitexConfig64Mem128 extends Config(
+  new With64Bits ++
+  new WithNSmallCores(1) ++
+  new WithLitexMemPortsMem128() ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfig64Mem128 extends Config(
+  new With64Bits ++
+  new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem128 ++
+  new BaseLitexConfig
+)
+
+class LitexFullConfig64Mem128 extends Config(
+  new With64Bits ++
+  new WithNBigCores(1) ++
+  new WithLitexMemPortsMem128 ++
+  new BaseLitexConfig
+)
+
+class LitexConfig32Mem128 extends Config(
+  new With32Bits ++
+  new WithNSmallCores(1) ++
+  new WithLitexMemPortsMem128 ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfig32Mem128 extends Config(
+  new With32Bits ++
+  new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem128 ++
+  new BaseLitexConfig
+)
+
+// memory width = 256
+
+class LitexConfig64Mem256 extends Config(
+  new With64Bits ++
+  new WithNSmallCores(1) ++
+  new WithLitexMemPortsMem256() ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfig64Mem256 extends Config(
+  new With64Bits ++
+  new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem256 ++
+  new BaseLitexConfig
+)
+
+class LitexFullConfig64Mem256 extends Config(
+  new With64Bits ++
+  new WithNBigCores(1) ++
+  new WithLitexMemPortsMem256 ++
+  new BaseLitexConfig
+)
+
+class LitexConfig32Mem256 extends Config(
+  new With32Bits ++
+  new WithNSmallCores(1) ++
+  new WithLitexMemPortsMem256 ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfig32Mem256 extends Config(
+  new With32Bits ++
+  new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem256 ++
   new BaseLitexConfig
 )

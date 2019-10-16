@@ -84,6 +84,7 @@ class Rocket(CPU):
         return flags
 
     def __init__(self, platform, variant):
+
         assert variant in CPU_VARIANTS[self.data_width], "Unsupported variant %s" % variant
 
         self.platform  = platform
@@ -99,9 +100,6 @@ class Rocket(CPU):
         self.mmio_wb   = mmio_wb = wishbone.Interface(data_width=32, adr_width=30)
 
         self.buses     = [mem_wb, mmio_wb]
-
-        # memory from real dram start, accessed only by axi4
-        self.mem2_axi  = mem2_axi = axi.AXIInterface(data_width=64, address_width=32, id_width=4)
 
         # # #
 
@@ -171,49 +169,6 @@ class Rocket(CPU):
             i_mem_axi4_0_r_bits_resp   = mem_axi.r.resp,
             i_mem_axi4_0_r_bits_last   = mem_axi.r.last,
 
-            # axi memory2 (L1-cached)
-            i_mem2_axi4_0_aw_ready      = mem2_axi.aw.ready,
-            o_mem2_axi4_0_aw_valid      = mem2_axi.aw.valid,
-            o_mem2_axi4_0_aw_bits_id    = mem2_axi.aw.id,
-            o_mem2_axi4_0_aw_bits_addr  = mem2_axi.aw.addr,
-            o_mem2_axi4_0_aw_bits_len   = mem2_axi.aw.len,
-            o_mem2_axi4_0_aw_bits_size  = mem2_axi.aw.size,
-            o_mem2_axi4_0_aw_bits_burst = mem2_axi.aw.burst,
-            o_mem2_axi4_0_aw_bits_lock  = mem2_axi.aw.lock,
-            o_mem2_axi4_0_aw_bits_cache = mem2_axi.aw.cache,
-            o_mem2_axi4_0_aw_bits_prot  = mem2_axi.aw.prot,
-            o_mem2_axi4_0_aw_bits_qos   = mem2_axi.aw.qos,
-
-            i_mem2_axi4_0_w_ready       = mem2_axi.w.ready,
-            o_mem2_axi4_0_w_valid       = mem2_axi.w.valid,
-            o_mem2_axi4_0_w_bits_data   = mem2_axi.w.data,
-            o_mem2_axi4_0_w_bits_strb   = mem2_axi.w.strb,
-            o_mem2_axi4_0_w_bits_last   = mem2_axi.w.last,
-
-            o_mem2_axi4_0_b_ready       = mem2_axi.b.ready,
-            i_mem2_axi4_0_b_valid       = mem2_axi.b.valid,
-            i_mem2_axi4_0_b_bits_id     = mem2_axi.b.id,
-            i_mem2_axi4_0_b_bits_resp   = mem2_axi.b.resp,
-
-            i_mem2_axi4_0_ar_ready      = mem2_axi.ar.ready,
-            o_mem2_axi4_0_ar_valid      = mem2_axi.ar.valid,
-            o_mem2_axi4_0_ar_bits_id    = mem2_axi.ar.id,
-            o_mem2_axi4_0_ar_bits_addr  = mem2_axi.ar.addr,
-            o_mem2_axi4_0_ar_bits_len   = mem2_axi.ar.len,
-            o_mem2_axi4_0_ar_bits_size  = mem2_axi.ar.size,
-            o_mem2_axi4_0_ar_bits_burst = mem2_axi.ar.burst,
-            o_mem2_axi4_0_ar_bits_lock  = mem2_axi.ar.lock,
-            o_mem2_axi4_0_ar_bits_cache = mem2_axi.ar.cache,
-            o_mem2_axi4_0_ar_bits_prot  = mem2_axi.ar.prot,
-            o_mem2_axi4_0_ar_bits_qos   = mem2_axi.ar.qos,
-
-            o_mem2_axi4_0_r_ready       = mem2_axi.r.ready,
-            i_mem2_axi4_0_r_valid       = mem2_axi.r.valid,
-            i_mem2_axi4_0_r_bits_id     = mem2_axi.r.id,
-            i_mem2_axi4_0_r_bits_data   = mem2_axi.r.data,
-            i_mem2_axi4_0_r_bits_resp   = mem2_axi.r.resp,
-            i_mem2_axi4_0_r_bits_last   = mem2_axi.r.last,
-
             # axi mmio (not cached)
             i_mmio_axi4_0_aw_ready      = mmio_axi.aw.ready,
             o_mmio_axi4_0_aw_valid      = mmio_axi.aw.valid,
@@ -271,20 +226,22 @@ class Rocket(CPU):
         self.submodules += mem_a2w, mmio_a2w
 
         # add verilog sources
-        self.add_sources(platform, variant)
+        self.platform = platform
+        self.variant  = variant
 
     def set_reset_address(self, reset_address):
         assert not hasattr(self, "reset_address")
         self.reset_address = reset_address
         assert reset_address == 0x10000000, "cpu_reset_addr hardcoded in during elaboration!"
 
-    def add_sources(self, platform, variant):
-        platform.add_sources(
+    def add_sources(self, mem_width):
+        basename = CPU_VARIANTS[self.data_width][self.variant] + "Mem" + str(mem_width)
+        self.platform.add_sources(
             _get_gdir(),
-            CPU_VARIANTS[self.data_width][variant] + ".v",
-            CPU_VARIANTS[self.data_width][variant] + ".behav_srams.v",
+            basename + ".v",
+            basename + ".behav_srams.v",
         )
-        platform.add_sources(
+        self.platform.add_sources(
             os.path.join(_get_vdir(), "vsrc"),
             "plusarg_reader.v",
             "AsyncResetReg.v",
@@ -293,22 +250,68 @@ class Rocket(CPU):
 
     def do_finalize(self):
         assert hasattr(self, "reset_address")
-        assert hasattr(self, "axi2native") or hasattr(self, "ibus2")
+        assert hasattr(self, "axi2native")
         self.specials += Instance("LitexRocketSystem", **self.cpu_params)
 
-    def connect_sdram(self, soc, asaxi=True):
-        if asaxi:
-            port = soc.sdram.crossbar.get_port(data_width=64)
-            axi2native = LiteDRAMAXI2Native(self.mem2_axi, port)
-            self.submodules.axi2native = axi2native
-        else:
-            mem2_wb = wishbone.Interface(data_width=64, adr_width=29)
-            ibus2   = wishbone.Interface()
-            mem2_a2w = ResetInserter()(axi.AXI2Wishbone(self.mem2_axi, mem2_wb, base_address=0))
-            self.comb += mem2_a2w.reset.eq(ResetSignal() | self.reset)
-            mem2_dc = wishbone.Converter(mem2_wb, ibus2)
-            self.submodules += mem2_a2w, mem2_dc
-            soc.add_wb_master(ibus2)
+    def connect_sdram(self, soc):
+        mem_width = soc.sdram.crossbar.controller.data_width
+        if mem_width < 64: mem_width = 64
+        self.mem_width = mem_width
+
+        # add sources
+        self.add_sources(mem_width)
+
+        # add sdram channel
+        mem2_axi = axi.AXIInterface(data_width=mem_width, address_width=32, id_width=4)
+
+        mem2_params = dict(
+            # axi memory2 (L1-cached)
+            i_mem2_axi4_0_aw_ready      = mem2_axi.aw.ready,
+            o_mem2_axi4_0_aw_valid      = mem2_axi.aw.valid,
+            o_mem2_axi4_0_aw_bits_id    = mem2_axi.aw.id,
+            o_mem2_axi4_0_aw_bits_addr  = mem2_axi.aw.addr,
+            o_mem2_axi4_0_aw_bits_len   = mem2_axi.aw.len,
+            o_mem2_axi4_0_aw_bits_size  = mem2_axi.aw.size,
+            o_mem2_axi4_0_aw_bits_burst = mem2_axi.aw.burst,
+            o_mem2_axi4_0_aw_bits_lock  = mem2_axi.aw.lock,
+            o_mem2_axi4_0_aw_bits_cache = mem2_axi.aw.cache,
+            o_mem2_axi4_0_aw_bits_prot  = mem2_axi.aw.prot,
+            o_mem2_axi4_0_aw_bits_qos   = mem2_axi.aw.qos,
+
+            i_mem2_axi4_0_w_ready       = mem2_axi.w.ready,
+            o_mem2_axi4_0_w_valid       = mem2_axi.w.valid,
+            o_mem2_axi4_0_w_bits_data   = mem2_axi.w.data,
+            o_mem2_axi4_0_w_bits_strb   = mem2_axi.w.strb,
+            o_mem2_axi4_0_w_bits_last   = mem2_axi.w.last,
+
+            o_mem2_axi4_0_b_ready       = mem2_axi.b.ready,
+            i_mem2_axi4_0_b_valid       = mem2_axi.b.valid,
+            i_mem2_axi4_0_b_bits_id     = mem2_axi.b.id,
+            i_mem2_axi4_0_b_bits_resp   = mem2_axi.b.resp,
+
+            i_mem2_axi4_0_ar_ready      = mem2_axi.ar.ready,
+            o_mem2_axi4_0_ar_valid      = mem2_axi.ar.valid,
+            o_mem2_axi4_0_ar_bits_id    = mem2_axi.ar.id,
+            o_mem2_axi4_0_ar_bits_addr  = mem2_axi.ar.addr,
+            o_mem2_axi4_0_ar_bits_len   = mem2_axi.ar.len,
+            o_mem2_axi4_0_ar_bits_size  = mem2_axi.ar.size,
+            o_mem2_axi4_0_ar_bits_burst = mem2_axi.ar.burst,
+            o_mem2_axi4_0_ar_bits_lock  = mem2_axi.ar.lock,
+            o_mem2_axi4_0_ar_bits_cache = mem2_axi.ar.cache,
+            o_mem2_axi4_0_ar_bits_prot  = mem2_axi.ar.prot,
+            o_mem2_axi4_0_ar_bits_qos   = mem2_axi.ar.qos,
+
+            o_mem2_axi4_0_r_ready       = mem2_axi.r.ready,
+            i_mem2_axi4_0_r_valid       = mem2_axi.r.valid,
+            i_mem2_axi4_0_r_bits_id     = mem2_axi.r.id,
+            i_mem2_axi4_0_r_bits_data   = mem2_axi.r.data,
+            i_mem2_axi4_0_r_bits_resp   = mem2_axi.r.resp,
+            i_mem2_axi4_0_r_bits_last   = mem2_axi.r.last,
+        )
+        self.cpu_params.update(mem2_params)
+        port = soc.sdram.crossbar.get_port(data_width=mem_width)
+        axi2native = LiteDRAMAXI2Native(mem2_axi, port)
+        self.submodules.axi2native = axi2native
 
     def build_dts(self,
                   variant="standard",
@@ -318,9 +321,9 @@ class Rocket(CPU):
                   devices="//insert your devices here\n"):
         if len(bootargs):
             bootargs = " " + bootargs
-        with open(os.path.join(_get_gdir(), CPU_VARIANTS[self.data_width][variant] + ".dts"), "r") as f:
+        dtsname = CPU_VARIANTS[self.data_width][variant] + "Mem" + str(self.mem_width) + ".dts"
+        with open(os.path.join(_get_gdir(), dtsname), "r") as f:
             dtslines = f.readlines()
-
         dram_search = "memory@" + hex(self.mem_map["main_ram"])[2:]
         bios_search = "memory@" + hex(self.mem_map["rom"])[2:]
         # find dram label

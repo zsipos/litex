@@ -7,13 +7,17 @@ ln -s ../../../../litex litex
 popd
 for BITS in 32 64
 do
-	for CFG in LitexConfig LitexLinuxConfig LitexFullConfig
+	for MEM in 64 128 256
 	do
-		CONFIG=${CFG}${BITS}
-		if [ $CONFIG != LitexFullConfig32 ]
-		then
-			make -C rocket-chip/vsim verilog CONFIG=$CONFIG MODEL=LitexRocketSystem
-		fi
+		for CFG in LitexConfig LitexLinuxConfig LitexFullConfig
+		do
+			CONFIG=${CFG}${BITS}Mem${MEM}
+			if [ $CFG != LitexFullConfig ] || [ $BITS != 32 ]
+			then
+				make -C rocket-chip/vsim verilog \
+					CONFIG=$CONFIG MODEL=LitexRocketSystem
+			fi
+		done
 	done
 done
 #rm -f $SCALASRC/litex
