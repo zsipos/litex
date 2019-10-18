@@ -21,7 +21,7 @@ else
 	$(PYTHON) -m litex.soc.software.mkmscimg $@
 endif
 
-bios.elf: $(BIOS_DIRECTORY)/linker.ld $(OBJECTS)
+bios.elf: $(BIOS_DIRECTORY)/linker.ld $(DTB) $(OBJECTS)
 
 %.elf: ../libbase/crt0-$(CPU)-ctr.o ../libnet/libnet.a ../libbase/libbase-nofloat.a ../libcompiler_rt/libcompiler_rt.a
 	$(LD) $(LDFLAGS) -T $(BIOS_DIRECTORY)/linker.ld -N -o $@ \
@@ -44,7 +44,10 @@ endif
 %.o: $(BIOS_DIRECTORY)/%.S
 	$(assemble)
 
+%.dtb: %.dts
+	$(compile_devicetree)
+
 clean:
-	$(RM) $(OBJECTS) bios.elf bios.bin .*~ *~
+	$(RM) $(OBJECTS) $(DTB) bios.elf bios.bin .*~ *~
 
 .PHONY: all clean

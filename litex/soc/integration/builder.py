@@ -95,6 +95,14 @@ class Builder:
             define("BUILDINC_DIRECTORY", buildinc_dir)
             for name, src_dir in self.software_packages:
                 define(name.upper() + "_DIRECTORY", src_dir)
+            dtb_name = os.path.join(generated_dir, "devicetree.dtb")
+            if hasattr(self.soc, "get_dts"):
+                write_to_file(
+                    os.path.join(generated_dir, "devicetree.dts"),
+                    self.soc.get_dts())
+                define("DTB", dtb_name)
+            else:
+                write_to_file(dtb_name, "")
             write_to_file(
                 os.path.join(generated_dir, "variables.mak"),
                 "".join(variables_contents))
@@ -127,15 +135,6 @@ class Builder:
                     get_sdram_phy_c_header(
                         self.soc.sdram.controller.settings.phy,
                         self.soc.sdram.controller.settings.timing))
-
-        name_dts = os.path.join(generated_dir, "devicetree.dts")
-        name_dtb = os.path.join(generated_dir, "devicetree.dtb")
-        if hasattr(self.soc, "get_dts"):
-            dts = self.soc.get_dts()
-            write_to_file(name_dts, dts)
-            os.system("dtc -I dts " + name_dts + " -O dtb -o " + name_dtb)
-        else:
-            write_to_file(name_dtb, "")
 
     def _generate_csr_map(self, csr_json=None, csr_csv=None):
         if csr_json is not None:
