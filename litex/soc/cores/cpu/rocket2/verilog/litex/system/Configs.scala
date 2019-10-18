@@ -117,6 +117,13 @@ class LitexLinuxConfig64Mem64 extends Config(
   new BaseLitexConfig
 )
 
+class LitexLinuxConfigDualCore64Mem64 extends Config(
+  new With64Bits ++
+  new WithNMediumCores(2) ++
+  new WithLitexMemPortsMem64 ++
+  new BaseLitexConfig
+)
+
 class LitexFullConfig64Mem64 extends Config(
   new With64Bits ++
   new WithNBigCores(1) ++
@@ -138,6 +145,13 @@ class LitexLinuxConfig32Mem64 extends Config(
   new BaseLitexConfig
 )
 
+class LitexLinuxConfigDualCore32Mem64 extends Config(
+  new With32Bits ++
+  new WithNMediumCores(2) ++
+  new WithLitexMemPortsMem64 ++
+  new BaseLitexConfig
+)
+
 // memory width = 128
 
 class LitexConfig64Mem128 extends Config(
@@ -148,6 +162,13 @@ class LitexConfig64Mem128 extends Config(
 )
 
 class LitexLinuxConfig64Mem128 extends Config(
+  new With64Bits ++
+  new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem128 ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfigDualCore64Mem128 extends Config(
   new With64Bits ++
   new WithNMediumCores(1) ++
   new WithLitexMemPortsMem128 ++
@@ -175,6 +196,13 @@ class LitexLinuxConfig32Mem128 extends Config(
   new BaseLitexConfig
 )
 
+class LitexLinuxConfigDualCore32Mem128 extends Config(
+  new With32Bits ++
+  new WithNMediumCores(2) ++
+  new WithLitexMemPortsMem128 ++
+  new BaseLitexConfig
+)
+
 // memory width = 256
 
 class LitexConfig64Mem256 extends Config(
@@ -187,6 +215,13 @@ class LitexConfig64Mem256 extends Config(
 class LitexLinuxConfig64Mem256 extends Config(
   new With64Bits ++
   new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem256 ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfigDualCore64Mem256 extends Config(
+  new With64Bits ++
+  new WithNMediumCores(2) ++
   new WithLitexMemPortsMem256 ++
   new BaseLitexConfig
 )
@@ -208,6 +243,13 @@ class LitexConfig32Mem256 extends Config(
 class LitexLinuxConfig32Mem256 extends Config(
   new With32Bits ++
   new WithNMediumCores(1) ++
+  new WithLitexMemPortsMem256 ++
+  new BaseLitexConfig
+)
+
+class LitexLinuxConfigDualCore32Mem256 extends Config(
+  new With32Bits ++
+  new WithNMediumCores(2) ++
   new WithLitexMemPortsMem256 ++
   new BaseLitexConfig
 )

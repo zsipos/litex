@@ -9,7 +9,7 @@ for BITS in 32 64
 do
 	for MEM in 64 128 256
 	do
-		for CFG in LitexConfig LitexLinuxConfig LitexFullConfig
+		for CFG in LitexConfig LitexLinuxConfig LitexLinuxConfigDualCore LitexFullConfig
 		do
 			CONFIG=${CFG}${BITS}Mem${MEM}
 			if [ $CFG != LitexFullConfig ] || [ $BITS != 32 ]

@@ -40,25 +40,29 @@ from litedram.frontend.axi import *
 
 CPU_VARIANTS = {
     32 : {
-        "standard" : "freechips.rocketchip.system.LitexConfig32",
-        "linux"    : "freechips.rocketchip.system.LitexLinuxConfig32",
+        "standard"       : "freechips.rocketchip.system.LitexConfig32",
+        "linux"          : "freechips.rocketchip.system.LitexLinuxConfig32",
+        "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore32"
     },
     64 : {
-        "standard" : "freechips.rocketchip.system.LitexConfig64",
-        "linux"    : "freechips.rocketchip.system.LitexLinuxConfig64",
-        "full"     : "freechips.rocketchip.system.LitexFullConfig64",
+        "standard"       : "freechips.rocketchip.system.LitexConfig64",
+        "linux"          : "freechips.rocketchip.system.LitexLinuxConfig64",
+        "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore64",
+        "full"           : "freechips.rocketchip.system.LitexFullConfig64",
     }
 }
 
 GCC_FLAGS = {
     32 : {
-        "standard" : "-march=rv32imac   -mabi=ilp32 ",
-        "linux"    : "-march=rv32imac   -mabi=ilp32 ",
+        "standard"      : "-march=rv32imac   -mabi=ilp32 ",
+        "linux"         : "-march=rv32imac   -mabi=ilp32 ",
+        "linux+dualcore": "-march=rv32imac   -mabi=ilp32 ",
     },
     64 : {
-        "standard" : "-march=rv64imac   -mabi=lp64 ",
-        "linux"    : "-march=rv64imac   -mabi=lp64 ",
-        "full"     : "-march=rv64imafdc -mabi=lp64 ",
+        "standard"       : "-march=rv64imac   -mabi=lp64 ",
+        "linux"          : "-march=rv64imac   -mabi=lp64 ",
+        "linux+dualcore" : "-march=rv64imac   -mabi=lp64 ",
+        "full"           : "-march=rv64imafdc -mabi=lp64 ",
     }
 }
 
@@ -314,14 +318,13 @@ class Rocket(CPU):
         self.submodules.axi2native = axi2native
 
     def build_dts(self,
-                  variant="standard",
                   bootargs="",
                   sdram_size=0x80000000,
                   timebase_frequency=600000,
                   devices="//insert your devices here\n"):
         if len(bootargs):
             bootargs = " " + bootargs
-        dtsname = CPU_VARIANTS[self.data_width][variant] + "Mem" + str(self.mem_width) + ".dts"
+        dtsname = CPU_VARIANTS[self.data_width][self.variant] + "Mem" + str(self.mem_width) + ".dts"
         with open(os.path.join(_get_gdir(), dtsname), "r") as f:
             dtslines = f.readlines()
         dram_search = "memory@" + hex(self.mem_map["main_ram"])[2:]

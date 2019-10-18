@@ -55,7 +55,7 @@ CPU_VARIANTS = {
     "full": [],
     "linux" : [],
 }
-CPU_VARIANTS_EXTENSIONS = ["debug", "no-dsp"]
+CPU_VARIANTS_EXTENSIONS = ["debug", "no-dsp", "dualcore"]
 
 
 class InvalidCPUVariantError(ValueError):
