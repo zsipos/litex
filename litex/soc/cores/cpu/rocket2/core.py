@@ -40,12 +40,10 @@ from litedram.frontend.axi import *
 
 CPU_VARIANTS = {
     32 : {
-        "standard"       : "freechips.rocketchip.system.LitexConfig32",
         "linux"          : "freechips.rocketchip.system.LitexLinuxConfig32",
         "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore32"
     },
     64 : {
-        "standard"       : "freechips.rocketchip.system.LitexConfig64",
         "linux"          : "freechips.rocketchip.system.LitexLinuxConfig64",
         "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore64",
         "full"           : "freechips.rocketchip.system.LitexFullConfig64",
@@ -54,12 +52,10 @@ CPU_VARIANTS = {
 
 GCC_FLAGS = {
     32 : {
-        "standard"      : "-march=rv32imac   -mabi=ilp32 ",
-        "linux"         : "-march=rv32imac   -mabi=ilp32 ",
-        "linux+dualcore": "-march=rv32imac   -mabi=ilp32 ",
+        "linux"          : "-march=rv32imac   -mabi=ilp32 ",
+        "linux+dualcore" : "-march=rv32imac   -mabi=ilp32 ",
     },
     64 : {
-        "standard"       : "-march=rv64imac   -mabi=lp64 ",
         "linux"          : "-march=rv64imac   -mabi=lp64 ",
         "linux+dualcore" : "-march=rv64imac   -mabi=lp64 ",
         "full"           : "-march=rv64imafdc -mabi=lp64 ",
