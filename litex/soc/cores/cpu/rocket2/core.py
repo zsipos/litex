@@ -1,6 +1,8 @@
 # litex/soc/cores/cpu/rocket2/core.py
 # Rocket Chip core support for the LiteX SoC.
 #
+# Copyright (c) 2019, Stefan Adams <stefan.adams@vipcomag.de>
+#
 # Author: Gabriel L. Somlo <somlo@cmu.edu>
 # Copyright (c) 2019, Carnegie Mellon University
 # All rights reserved.
@@ -81,6 +83,7 @@ class Rocket(CPU):
         flags =  "-mno-save-restore "
         flags += GCC_FLAGS[self.data_width][self.variant]
         flags += "-D__rocket__ "
+        flags += "-D__rocket" + str(self.data_width) + "__ "
         return flags
 
     def __init__(self, platform, variant):
@@ -381,7 +384,7 @@ class Rocket64(Rocket):
     gcc_triple           = ("riscv64-unknown-linux-gnu")
     linker_output_format = "elf64-littleriscv"
 
-    def __init__(self, platform, variant="standard"):
+    def __init__(self, platform, variant="linux"):
         Rocket.__init__(self, platform, variant)
 
 
@@ -392,7 +395,7 @@ class Rocket32(Rocket):
     gcc_triple           = ("riscv64-unknown-linux-gnu")
     linker_output_format = "elf32-littleriscv"
 
-    def __init__(self, platform, variant="standard"):
+    def __init__(self, platform, variant="linux"):
         Rocket.__init__(self, platform, variant)
 
 
