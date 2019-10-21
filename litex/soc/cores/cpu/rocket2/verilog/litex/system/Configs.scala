@@ -15,7 +15,7 @@ import freechips.rocketchip.tile.{RocketTileParams, XLen}
 class WithLitexMemPortsMem64 extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
     base = x"1000_0000", //litex bios base
-    size = x"1000_0000", //litex bios size
+    size = x"0200_0000", //litex bios size
     beatBytes = 4, //site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
   case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
@@ -30,7 +30,7 @@ class WithLitexMemPortsMem64 extends Config((site, here, up) => {
 class WithLitexMemPortsMem128 extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
     base = x"1000_0000", //litex bios base
-    size = x"1000_0000", //litex bios size
+    size = x"0200_0000", //litex bios size
     beatBytes = 4, //site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
   case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
@@ -45,7 +45,7 @@ class WithLitexMemPortsMem128 extends Config((site, here, up) => {
 class WithLitexMemPortsMem256 extends Config((site, here, up) => {
   case ExtMem => Some(MemoryPortParams(MasterPortParams(
     base = x"1000_0000", //litex bios base
-    size = x"1000_0000", //litex bios size
+    size = x"0200_0000", //litex bios size
     beatBytes = 4, //site(MemoryBusKey).beatBytes,
     idBits = 4), 1))
   case ExtMem2 => Some(MemoryPortParams(MasterPortParams(
@@ -57,8 +57,8 @@ class WithLitexMemPortsMem256 extends Config((site, here, up) => {
 
 class WithLitexMMIOPort extends Config((site, here, up) => {
   case ExtBus => Some(MasterPortParams(
-    base = x"2000_0000", //litex io base
-    size = x"6000_0000", //up to dram base
+    base = x"1200_0000", //litex io base
+    size = x"6E00_0000", //up to dram base
     beatBytes = 4, //site(MemoryBusKey).beatBytes,
     idBits = 4))
 })

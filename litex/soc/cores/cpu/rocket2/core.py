@@ -42,10 +42,12 @@ from litedram.frontend.axi import *
 
 CPU_VARIANTS = {
     32 : {
+        "standard"       : "freechips.rocketchip.system.LitexConfig32",
         "linux"          : "freechips.rocketchip.system.LitexLinuxConfig32",
         "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore32"
     },
     64 : {
+        "standard"       : "freechips.rocketchip.system.LitexConfig64",
         "linux"          : "freechips.rocketchip.system.LitexLinuxConfig64",
         "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore64",
         "full"           : "freechips.rocketchip.system.LitexFullConfig64",
@@ -54,18 +56,20 @@ CPU_VARIANTS = {
 
 GCC_FLAGS = {
     32 : {
-        "linux"          : "-march=rv32imac   -mabi=ilp32 ",
-        "linux+dualcore" : "-march=rv32imac   -mabi=ilp32 ",
+        "standard"       : "-march=rv32im     -mabi=ilp32",
+        "linux"          : "-march=rv32ima    -mabi=ilp32",
+        "linux+dualcore" : "-march=rv32ima    -mabi=ilp32",
     },
     64 : {
-        "linux"          : "-march=rv64imac   -mabi=lp64 ",
-        "linux+dualcore" : "-march=rv64imac   -mabi=lp64 ",
-        "full"           : "-march=rv64imafdc -mabi=lp64 ",
+        "standard"       : "-march=rv64imac   -mabi=lp64",
+        "linux"          : "-march=rv64imac   -mabi=lp64",
+        "linux+dualcore" : "-march=rv64imac   -mabi=lp64",
+        "full"           : "-march=rv64imafdc -mabi=lp64",
     }
 }
 
 class Rocket(CPU):
-    io_regions = {0x20000000:0x60000000} # origin, length
+    io_regions = {0x12000000:0x6E000000} # origin, length
 
     @property
     def mem_map(self):
@@ -73,7 +77,7 @@ class Rocket(CPU):
         return {
             "rom"      : 0x10000000,
             "sram"     : 0x11000000,
-            "csr"      : 0x20000000,
+            "csr"      : 0x12000000,
             "ethmac"   : 0x30000000,
             "main_ram" : 0x80000000,
         }
@@ -82,8 +86,8 @@ class Rocket(CPU):
     def gcc_flags(self):
         flags =  "-mno-save-restore "
         flags += GCC_FLAGS[self.data_width][self.variant]
-        flags += "-D__rocket__ "
-        flags += "-D__rocket" + str(self.data_width) + "__ "
+        flags += " -D__rocket__"
+        flags += " -D__rocket" + str(self.data_width) + "__"
         return flags
 
     def __init__(self, platform, variant):
@@ -243,9 +247,6 @@ class Rocket(CPU):
             _get_gdir(),
             basename + ".v",
             basename + ".behav_srams.v",
-        )
-        self.platform.add_sources(
-            os.path.join(_get_vdir(), "vsrc"),
             "plusarg_reader.v",
             "AsyncResetReg.v",
             "EICG_wrapper.v",
@@ -381,10 +382,10 @@ class Rocket64(Rocket):
     name                 = "rocket64"
     data_width           = 64
     endianness           = "little"
-    gcc_triple           = ("riscv64-unknown-linux-gnu")
+    gcc_triple           = ("riscv64-unknown-linux-gnu", "riscv64-unknown-elf")
     linker_output_format = "elf64-littleriscv"
 
-    def __init__(self, platform, variant="linux"):
+    def __init__(self, platform, variant="standard"):
         Rocket.__init__(self, platform, variant)
 
 
@@ -392,15 +393,12 @@ class Rocket32(Rocket):
     name                 = "rocket32"
     data_width           = 32
     endianness           = "little"
-    gcc_triple           = ("riscv64-unknown-linux-gnu")
+    gcc_triple           = ("riscv64-unknown-linux-gnu", "riscv32-unknown-elf", "riscv-none-embed")
     linker_output_format = "elf32-littleriscv"
 
-    def __init__(self, platform, variant="linux"):
+    def __init__(self, platform, variant="standard"):
         Rocket.__init__(self, platform, variant)
 
 
-def _get_vdir():
-    return os.path.join(os.path.abspath(os.path.dirname(__file__)), "verilog")
-
 def _get_gdir():
-    return os.path.join(_get_vdir(), "rocket-chip", "vsim", "generated-src")
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), "verilog", "generated-src")
