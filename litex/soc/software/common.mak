@@ -17,14 +17,12 @@ endif
 AR_normal      := $(TARGET_PREFIX)ar
 LD_normal      := $(TARGET_PREFIX)ld
 OBJCOPY_normal := $(TARGET_PREFIX)objcopy
-DTC_normal     := dtc
 
 CC_quiet      = @echo " CC      " $@ && $(CC_normal)
 CX_quiet      = @echo " CX      " $@ && $(CX_normal)
 AR_quiet      = @echo " AR      " $@ && $(AR_normal)
 LD_quiet      = @echo " LD      " $@ && $(LD_normal)
 OBJCOPY_quiet = @echo " OBJCOPY " $@ && $(OBJCOPY_normal)
-DTC_quiet     = @echo " DTC     " $@ && $(DTC_normal)
 
 ifeq ($(V),1)
 	CC = $(CC_normal)
@@ -32,14 +30,12 @@ ifeq ($(V),1)
 	AR = $(AR_normal)
 	LD = $(LD_normal)
 	OBJCOPY = $(OBJCOPY_normal)
-	DTC = $(DTC_normal)
 else
 	CC = $(CC_quiet)
 	CX = $(CX_quiet)
 	AR = $(AR_quiet)
 	LD = $(LD_quiet)
 	OBJCOPY = $(OBJCOPY_quiet)
-	DTC = $(DTC_quiet)
 endif
 
 # http://scottmcpeak.com/autodepend/autodepend.html
@@ -65,8 +61,4 @@ endef
 
 define assemble
 $(CC) -c $(CFLAGS) -o $@ $<
-endef
-
-define compile_devicetree
-$(DTC) -I dts -O dtb $< -o $@
 endef

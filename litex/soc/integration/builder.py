@@ -95,14 +95,6 @@ class Builder:
             define("BUILDINC_DIRECTORY", buildinc_dir)
             for name, src_dir in self.software_packages:
                 define(name.upper() + "_DIRECTORY", src_dir)
-            dtb_name = os.path.join(generated_dir, "devicetree.dtb")
-            if hasattr(self.soc, "get_dts"):
-                write_to_file(
-                    os.path.join(generated_dir, "devicetree.dts"),
-                    self.soc.get_dts())
-                define("DTB", dtb_name)
-            else:
-                write_to_file(dtb_name, "")
             write_to_file(
                 os.path.join(generated_dir, "variables.mak"),
                 "".join(variables_contents))
