@@ -1,7 +1,9 @@
 # litex/soc/cores/cpu/rocket2/core.py
 # Rocket Chip core support for the LiteX SoC.
 #
-# Copyright (c) 2019, Stefan Adams <stefan.adams@vipcomag.de>
+# Author: Stefan Adams <stefan.adams@vipcomag.de>
+#
+# derived from:
 #
 # Author: Gabriel L. Somlo <somlo@cmu.edu>
 # Copyright (c) 2019, Carnegie Mellon University
@@ -314,7 +316,7 @@ class Rocket(CPU):
         )
         self.cpu_params.update(mem2_params)
         port = soc.sdram.crossbar.get_port(data_width=mem_width)
-        axi2native = LiteDRAMAXI2Native(mem2_axi, port)
+        axi2native = LiteDRAMAXI2Native(mem2_axi, port, base_address=self.mem_map["main_ram"])
         self.submodules.axi2native = axi2native
 
     def build_dts(self,
