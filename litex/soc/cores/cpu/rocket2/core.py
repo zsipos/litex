@@ -322,7 +322,7 @@ class Rocket(CPU):
     def build_dts(self,
                   bootargs="",
                   sdram_size=0x80000000,
-                  timebase_frequency=600000,
+                  timebase_frequency=60000000,
                   devices="//insert your devices here\n"):
         if len(bootargs):
             bootargs = " " + bootargs
@@ -352,7 +352,7 @@ class Rocket(CPU):
             elif i.find("cpu@0") > -1:
                 # insert before cpu section
                 dts += i.split("L", 1)[0]
-                dts += "timebase-frequency = <" + str(timebase_frequency) + ">;\n"
+                dts += "timebase-frequency = <" + str(timebase_frequency//100) + ">;\n"
                 dts += i
             elif i.find("next-level-cache =") > -1:
                 # bios rom is of no interest for linux
