@@ -2,7 +2,7 @@
 
 	.global boot_helper
 boot_helper:
-#ifdef WITH_DTS
+#ifdef WITH_DTB
 	csrr a0, mhartid
 	la a1, dt_blob_start
 #else
@@ -21,7 +21,7 @@ hart_wait:
 hart_wait_loop:
 	ld t0, _st
 	beqz t0, hart_wait_loop
-#ifdef WITH_DTS
+#ifdef WITH_DTB
 	csrr a0, mhartid
 	la a1, dt_blob_start
 #else
@@ -40,7 +40,7 @@ hart_wait_loop:
     .comm _a1,8,8
     .comm _a2,8,8
 
-#ifdef WITH_DTS
+#ifdef WITH_DTB
 dt_blob_start:
     .incbin "generated/devicetree.dtb"
 #endif
