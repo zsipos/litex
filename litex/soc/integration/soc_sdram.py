@@ -54,6 +54,18 @@ class SoCSDRAM(SoCCore):
             clk_freq        = self.clk_freq,
             **kwargs)
 
+        # CPU <--> LiteDRAM ------------------------------------------------------------------------
+        if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
+            self.cpu.connect_sdram(self)
+            if hasattr(self, "no_wishbone_sdram") and self.no_wishbone_sdram:
+                # do not connect the sdram to the SoC wishbone bus, just register memory region.
+                main_ram_size = 2 ** (geom_settings.bankbits +
+                                      geom_settings.rowbits +
+                                      geom_settings.colbits) * phy.settings.databits // 8
+                main_ram_size = min(main_ram_size, 0x80000000)
+                self.add_memory_region("main_ram", self.mem_map["main_ram"], main_ram_size)
+                return
+
         # LiteDRAM port ------------------------------------------------------------------------
         port = self.sdram.crossbar.get_port()
         port.data_width = 2**int(log2(port.data_width)) # Round to nearest power of 2
