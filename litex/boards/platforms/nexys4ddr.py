@@ -106,7 +106,7 @@ _io = [
         Subsignal("sclk", Pins("B1")),
         Subsignal("mosi", Pins("C1")), Misc("PULLUP TRUE"),
         Subsignal("miso", Pins("C2")),
-        Subsignal("ss_n", Pins("D2")),
+        Subsignal("cs_n", Pins("D2")),
         IOStandard("LVCMOS33"), Misc("SLEW=FAST")
     ),
 ]
