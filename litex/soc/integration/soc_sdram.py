@@ -62,7 +62,7 @@ class SoCSDRAM(SoCCore):
                                   geom_settings.colbits) * phy.settings.databits // 8
             main_ram_size = min(main_ram_size, 0x80000000)
             main_ram_base = self.mem_map["main_ram"]
-            if hasattr(self, "no_wishbone_sdram") and self.no_wishbone_sdram:
+            if hasattr(self, "with_busmasters") and not self.with_busmasters:
                 # do not connect the sdram to the SoC wishbone bus, just register memory region.
                 self.add_memory_region("main_ram", main_ram_base, main_ram_size)
             else:
