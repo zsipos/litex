@@ -57,14 +57,25 @@ class SoCSDRAM(SoCCore):
         # CPU <--> LiteDRAM ------------------------------------------------------------------------
         if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
             self.cpu.connect_sdram(self)
+            main_ram_size = 2 ** (geom_settings.bankbits +
+                                  geom_settings.rowbits +
+                                  geom_settings.colbits) * phy.settings.databits // 8
+            main_ram_size = min(main_ram_size, 0x80000000)
+            main_ram_base = self.mem_map["main_ram"]
             if hasattr(self, "no_wishbone_sdram") and self.no_wishbone_sdram:
                 # do not connect the sdram to the SoC wishbone bus, just register memory region.
-                main_ram_size = 2 ** (geom_settings.bankbits +
-                                      geom_settings.rowbits +
-                                      geom_settings.colbits) * phy.settings.databits // 8
-                main_ram_size = min(main_ram_size, 0x80000000)
-                self.add_memory_region("main_ram", self.mem_map["main_ram"], main_ram_size)
-                return
+                self.add_memory_region("main_ram", main_ram_base, main_ram_size)
+            else:
+                # SoC <--> LiteDRAM ----------------------------------------------------------------
+                wb_sdram = wishbone.Interface()
+                self.register_mem("main_ram", main_ram_base, wb_sdram, main_ram_size)
+                wb_port = wb_sdram
+                port = self.sdram.crossbar.get_port()
+                if wb_port.data_width != port.data_width:
+                    wb_port = wishbone.Interface(data_width=port.data_width)
+                    self.submodules.wb_convert = wishbone.Converter(wb_sdram, wb_port)
+                self.submodules.wb_bridge = LiteDRAMWishbone2Native(wb_port, port)
+            return
 
         # LiteDRAM port ------------------------------------------------------------------------
         port = self.sdram.crossbar.get_port()
