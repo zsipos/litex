@@ -104,10 +104,10 @@ _io = [
 
     ("sdspi", 1,
         Subsignal("sclk", Pins("B1")),
-        Subsignal("mosi", Pins("C1")), Misc("PULLUP TRUE"),
+        Subsignal("mosi", Pins("C1")),
         Subsignal("miso", Pins("C2")),
         Subsignal("cs_n", Pins("D2")),
-        IOStandard("LVCMOS33"), Misc("SLEW=FAST")
+        IOStandard("LVCMOS33"), Misc("PULLUP TRUE"), Misc("SLEW=FAST")
     ),
 ]
 
