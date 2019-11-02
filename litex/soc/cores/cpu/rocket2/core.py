@@ -46,7 +46,8 @@ CPU_VARIANTS = {
     32 : {
         "standard"       : "freechips.rocketchip.system.LitexConfig32",
         "linux"          : "freechips.rocketchip.system.LitexLinuxConfig32",
-        "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore32"
+        "linux+dualcore" : "freechips.rocketchip.system.LitexLinuxConfigDualCore32",
+        "full"           : "freechips.rocketchip.system.LitexFullConfig32",
     },
     64 : {
         "standard"       : "freechips.rocketchip.system.LitexConfig64",
@@ -58,9 +59,10 @@ CPU_VARIANTS = {
 
 GCC_FLAGS = {
     32 : {
-        "standard"       : "-march=rv32im     -mabi=ilp32",
-        "linux"          : "-march=rv32ima    -mabi=ilp32",
-        "linux+dualcore" : "-march=rv32ima    -mabi=ilp32",
+        "standard"       : "-march=rv32imac   -mabi=ilp32",
+        "linux"          : "-march=rv32imac   -mabi=ilp32",
+        "linux+dualcore" : "-march=rv32imac   -mabi=ilp32",
+        "full"           : "-march=rv32imafdc -mabi=ilp32",
     },
     64 : {
         "standard"       : "-march=rv64imac   -mabi=lp64",
