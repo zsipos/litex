@@ -41,6 +41,8 @@ from litex.soc.interconnect import axi
 from litex.soc.interconnect import wishbone
 from litex.soc.cores.cpu import CPU
 from litedram.frontend.axi import *
+from litedram.frontend.wishbone import *
+
 
 CPU_VARIANTS = {
     32 : {
@@ -261,17 +263,18 @@ class Rocket(CPU):
         assert hasattr(self, "axi2native")
         self.specials += Instance("LitexRocketSystem", **self.cpu_params)
 
-    def connect_sdram(self, soc):
+    def connect_sdram(self, soc, size):
         mem_width = soc.sdram.crossbar.controller.data_width
         if mem_width < 64: mem_width = 64
         self.mem_width = mem_width
+        self.sdram_size = size
+        self.clk_freq = soc.clk_freq
 
         # add sources
         self.add_sources(mem_width)
 
-        # add sdram channel
+        # add sdram
         mem2_axi = axi.AXIInterface(data_width=mem_width, address_width=32, id_width=4)
-
         mem2_params = dict(
             # axi memory2 (L1-cached)
             i_mem2_axi4_0_aw_ready      = mem2_axi.aw.ready,
@@ -314,18 +317,66 @@ class Rocket(CPU):
             i_mem2_axi4_0_r_bits_id     = mem2_axi.r.id,
             i_mem2_axi4_0_r_bits_data   = mem2_axi.r.data,
             i_mem2_axi4_0_r_bits_resp   = mem2_axi.r.resp,
-            i_mem2_axi4_0_r_bits_last   = mem2_axi.r.last,
+            i_mem2_axi4_0_r_bits_last   = mem2_axi.r.last
         )
         self.cpu_params.update(mem2_params)
+        base = soc.mem_map["main_ram"]
         port = soc.sdram.crossbar.get_port(data_width=mem_width)
-        axi2native = LiteDRAMAXI2Native(mem2_axi, port, base_address=self.mem_map["main_ram"])
-        self.submodules.axi2native = axi2native
+        self.submodules.axi2native = LiteDRAMAXI2Native(mem2_axi, port, base_address=base)
+        soc.add_memory_region("main_ram", base, size)
+        if hasattr(soc, "with_busmasters") and soc.with_busmasters:
+            # add dma channel
+            dma_axi  = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
+            dma_params = dict(
+                # dma slave
+                o_l2_frontend_bus_axi4_0_aw_ready      = dma_axi.aw.ready,
+                i_l2_frontend_bus_axi4_0_aw_valid      = dma_axi.aw.valid,
+                i_l2_frontend_bus_axi4_0_aw_bits_id    = dma_axi.aw.id,
+                i_l2_frontend_bus_axi4_0_aw_bits_addr  = dma_axi.aw.addr,
+                i_l2_frontend_bus_axi4_0_aw_bits_len   = dma_axi.aw.len,
+                i_l2_frontend_bus_axi4_0_aw_bits_size  = dma_axi.aw.size,
+                i_l2_frontend_bus_axi4_0_aw_bits_burst = dma_axi.aw.burst,
+                i_l2_frontend_bus_axi4_0_aw_bits_lock  = dma_axi.aw.lock,
+                i_l2_frontend_bus_axi4_0_aw_bits_cache = dma_axi.aw.cache,
+                i_l2_frontend_bus_axi4_0_aw_bits_prot  = dma_axi.aw.prot,
+                i_l2_frontend_bus_axi4_0_aw_bits_qos   = dma_axi.aw.qos,
 
-    def build_dts(self,
-                  bootargs="",
-                  sdram_size=0x80000000,
-                  timebase_frequency=60000000,
-                  devices="//insert your devices here\n"):
+                o_l2_frontend_bus_axi4_0_w_ready       = dma_axi.w.ready,
+                i_l2_frontend_bus_axi4_0_w_valid       = dma_axi.w.valid,
+                i_l2_frontend_bus_axi4_0_w_bits_data   = dma_axi.w.data,
+                i_l2_frontend_bus_axi4_0_w_bits_strb   = dma_axi.w.strb,
+                i_l2_frontend_bus_axi4_0_w_bits_last   = dma_axi.w.last,
+
+                i_l2_frontend_bus_axi4_0_b_ready       = dma_axi.b.ready,
+                o_l2_frontend_bus_axi4_0_b_valid       = dma_axi.b.valid,
+                o_l2_frontend_bus_axi4_0_b_bits_id     = dma_axi.b.id,
+                o_l2_frontend_bus_axi4_0_b_bits_resp   = dma_axi.b.resp,
+
+                o_l2_frontend_bus_axi4_0_ar_ready      = dma_axi.ar.ready,
+                i_l2_frontend_bus_axi4_0_ar_valid      = dma_axi.ar.valid,
+                i_l2_frontend_bus_axi4_0_ar_bits_id    = dma_axi.ar.id,
+                i_l2_frontend_bus_axi4_0_ar_bits_addr  = dma_axi.ar.addr,
+                i_l2_frontend_bus_axi4_0_ar_bits_len   = dma_axi.ar.len,
+                i_l2_frontend_bus_axi4_0_ar_bits_size  = dma_axi.ar.size,
+                i_l2_frontend_bus_axi4_0_ar_bits_burst = dma_axi.ar.burst,
+                i_l2_frontend_bus_axi4_0_ar_bits_lock  = dma_axi.ar.lock,
+                i_l2_frontend_bus_axi4_0_ar_bits_cache = dma_axi.ar.cache,
+                i_l2_frontend_bus_axi4_0_ar_bits_prot  = dma_axi.ar.prot,
+                i_l2_frontend_bus_axi4_0_ar_bits_qos   = dma_axi.ar.qos,
+
+                i_l2_frontend_bus_axi4_0_r_ready       = dma_axi.r.ready,
+                o_l2_frontend_bus_axi4_0_r_valid       = dma_axi.r.valid,
+                o_l2_frontend_bus_axi4_0_r_bits_id     = dma_axi.r.id,
+                o_l2_frontend_bus_axi4_0_r_bits_data   = dma_axi.r.data,
+                o_l2_frontend_bus_axi4_0_r_bits_resp   = dma_axi.r.resp,
+                o_l2_frontend_bus_axi4_0_r_bits_last   = dma_axi.r.last
+            )
+            self.cpu_params.update(dma_params)
+            dma_wb = wishbone.Interface()
+            self.submodules.wishbone2axi = _Wishbone2AXI(dma_wb, dma_axi, base)
+            soc.add_wb_slave(base, dma_wb, size)
+
+    def build_dts(self, bootargs="", devices="//insert your devices here\n"):
         if len(bootargs):
             bootargs = " " + bootargs
         dtsname = CPU_VARIANTS[self.data_width][self.variant] + "Mem" + str(self.mem_width) + ".dts"
@@ -354,7 +405,7 @@ class Rocket(CPU):
             elif i.find("cpu@0") > -1:
                 # insert before cpu section
                 dts += i.split("L", 1)[0]
-                dts += "timebase-frequency = <" + str(timebase_frequency//100) + ">;\n"
+                dts += "timebase-frequency = <" + str(self.clk_freq//100) + ">;\n"
                 dts += i
             elif i.find("next-level-cache =") > -1:
                 # bios rom is of no interest for linux
@@ -376,7 +427,7 @@ class Rocket(CPU):
             elif inmemory2 and i.find("reg =") > -1:
                 # fix memory size
                 inmemory2 = False
-                dts += i.split("=", 1)[0] + "= <" + hex(self.mem_map["main_ram"]) + " " + hex(sdram_size) + ">;\n"
+                dts += i.split("=", 1)[0] + "= <" + hex(self.mem_map["main_ram"]) + " " + hex(self.sdram_size) + ">;\n"
             elif not inmemory1:
                 dts += i
         return dts
@@ -406,3 +457,59 @@ class Rocket32(Rocket):
 
 def _get_gdir():
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), "verilog", "generated-src")
+
+
+class _Wishbone2AXI(Module):
+    def __init__(self, wishbone, port, base_address=0):
+        assert len(wishbone.dat_w) == len(port.w.data)
+
+        # # #
+
+        ashift = log2_int(port.data_width//8)
+
+        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        fsm.act("IDLE",
+            If(wishbone.cyc & wishbone.stb,
+                If(wishbone.we,
+                    NextValue(port.aw.valid, 1),
+                    NextValue(port.w.valid, 1),
+                    NextState("WRITE")
+                ).Else(
+                    NextValue(port.ar.valid, 1),
+                    NextState("READ")
+                )
+            )
+        )
+        fsm.act("WRITE",
+            port.aw.size.eq(ashift),
+            port.aw.addr.eq(Cat(Replicate(0, ashift), wishbone.adr)+base_address),
+            port.w.last.eq(1),
+            port.w.data.eq(wishbone.dat_w),
+            port.w.strb.eq(wishbone.sel),
+            If(port.aw.ready,
+                NextValue(port.aw.valid, 0)
+            ),
+            If(port.w.ready,
+                NextValue(port.w.valid, 0)
+            ),
+            If(port.b.valid,
+                port.b.ready.eq(1),
+                wishbone.ack.eq(1),
+                wishbone.err.eq(port.b.resp != 0b00),
+                NextState("IDLE")
+            )
+        )
+        fsm.act("READ",
+            port.ar.size.eq(ashift),
+            port.ar.addr.eq(Cat(Replicate(0, ashift), wishbone.adr)+base_address),
+            If(port.ar.ready,
+                NextValue(port.ar.valid, 0)
+            ),
+            If(port.r.valid,
+                port.r.ready.eq(1),
+                wishbone.dat_r.eq(port.r.data),
+                wishbone.ack.eq(1),
+                wishbone.err.eq(port.r.resp != 0b00),
+                NextState("IDLE")
+            )
+        )
