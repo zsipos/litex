@@ -119,7 +119,7 @@ class Platform(XilinxPlatform):
 
     def __init__(self):
         XilinxPlatform.__init__(self, "xc7a100t-CSG324-1", _io, toolchain="vivado")
-        self.add_platform_command("set_property INTERNAL_VREF 0.750 [get_iobanks 34]")
+        self.add_platform_command("set_property INTERNAL_VREF 0.9 [get_iobanks 34]")
 
     def create_programmer(self):
         return VivadoProgrammer()
