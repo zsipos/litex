@@ -373,7 +373,8 @@ class Rocket(CPU):
             )
             self.cpu_params.update(dma_params)
             dma_wb = wishbone.Interface()
-            self.submodules.wishbone2axi = _Wishbone2AXI(dma_wb, dma_axi, base)
+            self.submodules.wb2axi = ResetInserter()(_Wishbone2AXI(dma_wb, dma_axi))
+            self.comb += self.wb2axi.reset.eq(ResetSignal() | self.reset)
             soc.add_wb_slave(base, dma_wb, size)
 
     def build_dts(self, bootargs="", devices="//insert your devices here\n"):
@@ -460,56 +461,65 @@ def _get_gdir():
 
 
 class _Wishbone2AXI(Module):
-    def __init__(self, wishbone, port, base_address=0):
-        assert len(wishbone.dat_w) == len(port.w.data)
+    def __init__(self, wishbone, axi):
+
+        assert wishbone.adr_width == 30 and wishbone.data_width == 32
 
         # # #
 
-        ashift = log2_int(port.data_width//8)
+        self.comb += [
+            # write
+            axi.aw.size.eq(0b010),
+            #axi.aw.cache.eq(2),
+            #axi.aw.prot.eq(2),
+            axi.aw.addr.eq(Cat(0, 0, wishbone.adr)),
+            axi.w.last.eq(1),
+            axi.w.strb.eq(wishbone.sel),
+            axi.w.data.eq(wishbone.dat_w),
+            # read
+            axi.ar.size.eq(0b010),
+            #axi.ar.cache.eq(2),
+            #axi.ar.prot.eq(2),
+            axi.ar.addr.eq(Cat(0, 0, wishbone.adr)),
+            wishbone.dat_r.eq(axi.r.data),
+        ]
 
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             If(wishbone.cyc & wishbone.stb,
                 If(wishbone.we,
-                    NextValue(port.aw.valid, 1),
-                    NextValue(port.w.valid, 1),
+                    NextValue(axi.aw.valid, 1),
+                    NextValue(axi.w.valid, 1),
                     NextState("WRITE")
                 ).Else(
-                    NextValue(port.ar.valid, 1),
+                    NextValue(axi.ar.valid, 1),
                     NextState("READ")
                 )
             )
         )
         fsm.act("WRITE",
-            port.aw.size.eq(ashift),
-            port.aw.addr.eq(Cat(Replicate(0, ashift), wishbone.adr)+base_address),
-            port.w.last.eq(1),
-            port.w.data.eq(wishbone.dat_w),
-            port.w.strb.eq(wishbone.sel),
-            If(port.aw.ready,
-                NextValue(port.aw.valid, 0)
+            If(axi.aw.ready,
+                NextValue(axi.aw.valid, 0)
             ),
-            If(port.w.ready,
-                NextValue(port.w.valid, 0)
+            If(axi.w.ready,
+                NextValue(axi.w.valid, 0)
             ),
-            If(port.b.valid,
-                port.b.ready.eq(1),
+            If(axi.b.valid,
+                axi.b.ready.eq(1),
                 wishbone.ack.eq(1),
-                wishbone.err.eq(port.b.resp != 0b00),
+                wishbone.err.eq(axi.b.resp != 0b00),
                 NextState("IDLE")
             )
         )
         fsm.act("READ",
-            port.ar.size.eq(ashift),
-            port.ar.addr.eq(Cat(Replicate(0, ashift), wishbone.adr)+base_address),
-            If(port.ar.ready,
-                NextValue(port.ar.valid, 0)
+            If(axi.ar.ready,
+                NextValue(axi.ar.valid, 0)
             ),
-            If(port.r.valid,
-                port.r.ready.eq(1),
-                wishbone.dat_r.eq(port.r.data),
+            If(axi.r.valid,
+                axi.r.ready.eq(1),
                 wishbone.ack.eq(1),
-                wishbone.err.eq(port.r.resp != 0b00),
+                wishbone.err.eq(axi.r.resp != 0b00),
                 NextState("IDLE")
             )
         )
+
