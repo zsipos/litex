@@ -59,6 +59,7 @@ class SoCSDRAM(SoCCore):
             main_ram_size = 2 ** (geom_settings.bankbits +
                                   geom_settings.rowbits +
                                   geom_settings.colbits) * phy.settings.databits // 8
+            main_ram_size = min(main_ram_size, 0x80000000)
             self.cpu.connect_sdram(self, main_ram_size)
             return
 
