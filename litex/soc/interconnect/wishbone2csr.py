@@ -35,11 +35,9 @@ class WB2CSR(Module):
         )
         fsm.act("ACK",
             self.wishbone.ack.eq(1),
-            NextState("RESET-ACK")
+            NextState("WRITE-READ")
         )
-        fsm.act("RESET-ACK",
-            self.wishbone.ack.eq(0),
-            self.csr.we.eq(0),
+        fsm.act("WAIT-STATE",
             NextState("WRITE-READ")
         )
 
