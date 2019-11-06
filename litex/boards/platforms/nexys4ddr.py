@@ -98,7 +98,24 @@ _io = [
         Subsignal("rx_er", Pins("C10")),
         Subsignal("int_n", Pins("D8")),
         IOStandard("LVCMOS33")
-     ),
+    ),
+
+    ("spiflash4x", 0,
+        Subsignal("cs_n", Pins("L13")),
+        #Subsignal("clk", Pins("E9")), # must use STARTUPE2
+        Subsignal("dq", Pins("K17", "K18", "L14", "M14")),
+        IOStandard("LVCMOS33")
+    ),
+
+    ("spiflash", 0,
+        Subsignal("cs_n", Pins("L13")),
+        #Subsignal("clk", Pins("E9")), # must use STARTUPE2
+        Subsignal("mosi", Pins("K17")),
+        Subsignal("miso", Pins("K18")),
+        Subsignal("wp", Pins("L14")),
+        Subsignal("hold", Pins("M14")),
+        IOStandard("LVCMOS33"),
+    ),
 
     ("sdpwdn", 0, Pins("E2"), IOStandard("LVCMOS33")),
 
@@ -107,6 +124,13 @@ _io = [
         Subsignal("mosi", Pins("C1")),
         Subsignal("miso", Pins("C2")),
         Subsignal("cs_n", Pins("D2")),
+        IOStandard("LVCMOS33"), Misc("PULLUP TRUE"), Misc("SLEW=FAST")
+    ),
+
+    ("sdmmc", 1,
+        Subsignal("clk", Pins("B1")),
+        Subsignal("cmd", Pins("C1")),
+        Subsignal("data", Pins("C2 E1 F1 D2")),
         IOStandard("LVCMOS33"), Misc("PULLUP TRUE"), Misc("SLEW=FAST")
     ),
 ]
@@ -120,9 +144,14 @@ class Platform(XilinxPlatform):
     def __init__(self):
         XilinxPlatform.__init__(self, "xc7a100t-CSG324-1", _io, toolchain="vivado")
         self.add_platform_command("set_property INTERNAL_VREF 0.9 [get_iobanks 34]")
+        self.toolchain.bitstream_commands = \
+            ["set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]"]
+        self.toolchain.additional_commands = \
+            ["write_cfgmem -force -format bin -interface spix4 -size 128 "
+             "-loadbit \"up 0x0 {build_name}.bit\" -file {build_name}.bin"]
 
     def create_programmer(self):
-        return VivadoProgrammer()
+        return VivadoProgrammer(flash_part="s25fl128sxxxxxx0-spi-x1_x2_x4")
 
     def do_finalize(self, fragment):
         XilinxPlatform.do_finalize(self, fragment)
