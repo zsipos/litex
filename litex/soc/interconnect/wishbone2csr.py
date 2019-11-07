@@ -37,7 +37,3 @@ class WB2CSR(Module):
             self.wishbone.ack.eq(1),
             NextState("WRITE-READ")
         )
-        fsm.act("WAIT-STATE",
-            NextState("WRITE-READ")
-        )
-
