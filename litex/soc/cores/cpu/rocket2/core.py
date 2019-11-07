@@ -470,16 +470,16 @@ class _Wishbone2AXI(Module):
         self.comb += [
             # write
             axi.aw.size.eq(0b010),
-            #axi.aw.cache.eq(2),
-            #axi.aw.prot.eq(2),
+            axi.aw.cache.eq(0b0010),
+            axi.aw.prot.eq(0b010),
             axi.aw.addr.eq(Cat(0, 0, wishbone.adr)),
             axi.w.last.eq(1),
             axi.w.strb.eq(wishbone.sel),
             axi.w.data.eq(wishbone.dat_w),
             # read
             axi.ar.size.eq(0b010),
-            #axi.ar.cache.eq(2),
-            #axi.ar.prot.eq(2),
+            axi.ar.cache.eq(0b0010),
+            axi.ar.prot.eq(0b010),
             axi.ar.addr.eq(Cat(0, 0, wishbone.adr)),
             wishbone.dat_r.eq(axi.r.data),
         ]
