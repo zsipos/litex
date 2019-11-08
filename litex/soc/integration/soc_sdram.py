@@ -54,6 +54,16 @@ class SoCSDRAM(SoCCore):
             clk_freq        = self.clk_freq,
             **kwargs)
 
+        # CPU <--> LiteDRAM ------------------------------------------------------------------------
+        if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
+            main_ram_size = 2 ** (geom_settings.bankbits +
+                                  geom_settings.rowbits +
+                                  geom_settings.colbits) * phy.settings.databits // 8
+            if main_ram_size_limit:
+                main_ram_size = min(main_ram_size, main_ram_size_limit)
+            self.cpu.connect_sdram(self, main_ram_size)
+            return
+
         # LiteDRAM port ------------------------------------------------------------------------
         port = self.sdram.crossbar.get_port()
         port.data_width = 2**int(log2(port.data_width)) # Round to nearest power of 2

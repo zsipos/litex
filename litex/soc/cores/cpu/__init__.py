@@ -32,6 +32,7 @@ from litex.soc.cores.cpu.picorv32 import PicoRV32
 from litex.soc.cores.cpu.vexriscv import VexRiscv
 from litex.soc.cores.cpu.minerva import Minerva
 from litex.soc.cores.cpu.rocket import RocketRV64
+from litex.soc.cores.cpu.rocket2 import Rocket64, Rocket32
 
 CPUS = {
     "lm32"       : LM32,
@@ -40,6 +41,8 @@ CPUS = {
     "vexriscv"   : VexRiscv,
     "minerva"    : Minerva,
     "rocket"     : RocketRV64,
+    "rocket64"   : Rocket64,
+    "rocket32"   : Rocket32,
 }
 
 # CPU Variants/Extensions Definition ---------------------------------------------------------------
@@ -52,7 +55,7 @@ CPU_VARIANTS = {
     "full": [],
     "linux" : [],
 }
-CPU_VARIANTS_EXTENSIONS = ["debug", "no-dsp"]
+CPU_VARIANTS_EXTENSIONS = ["debug", "no-dsp", "dualcore"]
 
 
 class InvalidCPUVariantError(ValueError):
