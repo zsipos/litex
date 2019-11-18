@@ -343,11 +343,6 @@ class Rocket(CPU):
         with open(os.path.join(_get_gdir(), dtsname), "r") as f:
             dtslines = f.readlines()
         dram_search = "memory@" + hex(self.mem_map["main_ram"])[2:]
-        # find dram label
-        for i in dtslines:
-            if i.find(dram_search) > -1:
-                dramlabel = i.split(":", 1)[0].lstrip()
-                break
         inmemory1 = False
         inmemory2 = False
         dts = ""
