@@ -118,20 +118,18 @@ class Rocket(CPU):
             i_clock=ClockSignal(),
             i_reset=ResetSignal() | self.reset,
 
-            # debug (ignored)
-            #o_debug_clockeddmi_dmi_req_ready      = ,
-            i_debug_clockeddmi_dmi_req_valid       = 0,
-            i_debug_clockeddmi_dmi_req_bits_addr   = 0,
-            i_debug_clockeddmi_dmi_req_bits_data   = 0,
-            i_debug_clockeddmi_dmi_req_bits_op     = 0,
-            i_debug_clockeddmi_dmi_resp_ready      = 0,
-            #o_debug_clockeddmi_dmi_resp_valid     = ,
-            #o_debug_clockeddmi_dmi_resp_bits_data = ,
-            #o_debug_clockeddmi_dmi_resp_bits_resp = ,
-            i_debug_clockeddmi_dmiClock            = 0,
-            i_debug_clockeddmi_dmiReset            = 0,
-            #o_debug_ndreset                       = ,
-            #o_debug_dmactive                      = ,
+            # debug: todo...
+            #i_debug_systemjtag_jtag_TCK        =
+            #i_debug_systemjtag_jtag_TMS        =
+            #i_debug_systemjtag_jtag_TDI        =
+            #o_debug_systemjtag_jtag_TDO_data   =
+            #o_debug_systemjtag_jtag_TDO_driven =
+            #i_debug_systemjtag_reset           = ResetSignal(),
+            #i_debug_systemjtag_mfr_id          = 0x489, # SiFive?
+            #i_debug_systemjtag_part_number     = 0,
+            #i_debug_systemjtag_version         = 2,
+            #o_debug_ndreset                    =
+            #o_debug_dmactive                   =
 
             # irq
             i_interrupts=self.interrupt,
