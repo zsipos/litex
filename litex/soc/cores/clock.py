@@ -91,13 +91,14 @@ class XilinxClocking(Module, AutoCSR):
         raise ValueError("No PLL config found")
 
     def expose_drp(self):
-        self.drp_reset = CSR()
-        self.drp_read  = CSR()
-        self.drp_write = CSR()
-        self.drp_drdy  = CSRStatus()
-        self.drp_adr   = CSRStorage(7)
-        self.drp_dat_w = CSRStorage(16)
-        self.drp_dat_r = CSRStatus(16)
+        self.drp_reset  = CSR()
+        self.drp_locked = CSRStatus()
+        self.drp_read   = CSR()
+        self.drp_write  = CSR()
+        self.drp_drdy   = CSRStatus()
+        self.drp_adr    = CSRStorage(7)
+        self.drp_dat_w  = CSRStorage(16)
+        self.drp_dat_r  = CSRStatus(16)
 
         # # #
 
@@ -118,6 +119,7 @@ class XilinxClocking(Module, AutoCSR):
                 self.drp_drdy.status.eq(1)
             )
         ]
+        self.comb += self.drp_locked.status.eq(self.locked)
 
     def do_finalize(self):
         assert hasattr(self, "clkin")
@@ -224,7 +226,7 @@ class S7PLL(XilinxClocking):
         config = self.compute_config()
         pll_fb = Signal()
         self.params.update(
-            p_STARTUP_WAIT="FALSE", o_LOCKED=self.locked,
+            p_STARTUP_WAIT="FALSE", o_LOCKED=self.locked, i_RST=self.reset,
 
             # VCO
             p_REF_JITTER1=0.01, p_CLKIN1_PERIOD=1e9/self.clkin_freq,
@@ -261,7 +263,7 @@ class S7MMCM(XilinxClocking):
         config = self.compute_config()
         mmcm_fb = Signal()
         self.params.update(
-            p_BANDWIDTH="OPTIMIZED", o_LOCKED=self.locked,
+            p_BANDWIDTH="OPTIMIZED", o_LOCKED=self.locked, i_RST=self.reset,
 
             # VCO
             p_REF_JITTER1=0.01, p_CLKIN1_PERIOD=1e9/self.clkin_freq,
@@ -318,7 +320,7 @@ class USPLL(XilinxClocking):
         config = self.compute_config()
         pll_fb = Signal()
         self.params.update(
-            p_STARTUP_WAIT="FALSE", o_LOCKED=self.locked,
+            p_STARTUP_WAIT="FALSE", o_LOCKED=self.locked, i_RST=self.reset,
 
             # VCO
             p_REF_JITTER1=0.01, p_CLKIN1_PERIOD=1e9/self.clkin_freq,
@@ -354,7 +356,7 @@ class USMMCM(XilinxClocking):
         config = self.compute_config()
         mmcm_fb = Signal()
         self.params.update(
-            p_BANDWIDTH="OPTIMIZED", o_LOCKED=self.locked,
+            p_BANDWIDTH="OPTIMIZED", o_LOCKED=self.locked, i_RST=self.reset,
 
             # VCO
             p_REF_JITTER1=0.01, p_CLKIN1_PERIOD=1e9/self.clkin_freq,
