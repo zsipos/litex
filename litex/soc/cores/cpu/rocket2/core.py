@@ -384,7 +384,7 @@ class Rocket64(Rocket):
     name                 = "rocket64"
     data_width           = 64
     endianness           = "little"
-    gcc_triple           = ("riscv64-unknown-linux-gnu", "riscv64-unknown-elf")
+    gcc_triple           = ("riscv64-unknown-linux-gnu", "riscv64-linux", "riscv64-unknown-elf")
     linker_output_format = "elf64-littleriscv"
 
     def __init__(self, platform, variant="standard"):
@@ -395,7 +395,7 @@ class Rocket32(Rocket):
     name                 = "rocket32"
     data_width           = 32
     endianness           = "little"
-    gcc_triple           = ("riscv64-unknown-linux-gnu", "riscv32-unknown-elf", "riscv-none-embed")
+    gcc_triple           = ("riscv64-unknown-linux-gnu", "riscv32-linux", "riscv32-unknown-elf", "riscv-none-embed")
     linker_output_format = "elf32-littleriscv"
 
     def __init__(self, platform, variant="standard"):
