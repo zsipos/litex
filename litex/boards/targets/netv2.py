@@ -13,7 +13,7 @@ from litex.soc.cores.clock import *
 from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
 
-from litedram.modules import MT41J128M16
+from litedram.modules import K4B2G1646F
 from litedram.phy import s7ddrphy
 
 from liteeth.phy.rmii import LiteEthPHYRMII
@@ -52,20 +52,27 @@ class _CRG(Module):
 class BaseSoC(SoCSDRAM):
     def __init__(self, sys_clk_freq=int(100e6), integrated_rom_size=0x8000, **kwargs):
         platform = netv2.Platform()
-        SoCSDRAM.__init__(self, platform, clk_freq=sys_clk_freq,
-                         integrated_rom_size=integrated_rom_size,
-                         integrated_sram_size=0x8000,
-                         **kwargs)
 
+        # SoCSDRAM ---------------------------------------------------------------------------------
+        SoCSDRAM.__init__(self, platform, clk_freq=sys_clk_freq,
+            integrated_rom_size  = integrated_rom_size,
+            integrated_sram_size = 0x8000,
+            **kwargs)
+
+        # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq)
 
-        # sdram
-        self.submodules.ddrphy = s7ddrphy.A7DDRPHY(platform.request("ddram"), sys_clk_freq=sys_clk_freq)
-        self.add_csr("ddrphy")
-        sdram_module = MT41J128M16(sys_clk_freq, "1:4")
-        self.register_sdram(self.ddrphy,
-                            sdram_module.geom_settings,
-                            sdram_module.timing_settings)
+        # DDR3 SDRAM -------------------------------------------------------------------------------
+        if not self.integrated_main_ram_size:
+            self.submodules.ddrphy = s7ddrphy.A7DDRPHY(platform.request("ddram"),
+                memtype      = "DDR3",
+                nphases      = 4,
+                sys_clk_freq = sys_clk_freq)
+            self.add_csr("ddrphy")
+            sdram_module = K4B2G1646F(sys_clk_freq, "1:4")
+            self.register_sdram(self.ddrphy,
+                geom_settings   = sdram_module.geom_settings,
+                timing_settings = sdram_module.timing_settings)
 
 # EthernetSoC --------------------------------------------------------------------------------------
 
