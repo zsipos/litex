@@ -35,12 +35,6 @@ class _CRG(Module):
 
         # # #
 
-        self.cd_init.clk.attr.add("keep")
-        self.cd_por.clk.attr.add("keep")
-        self.cd_sys.clk.attr.add("keep")
-        self.cd_sys2x.clk.attr.add("keep")
-        self.cd_sys2x_i.clk.attr.add("keep")
-
         self.stop = Signal()
 
         # clk / rst
@@ -124,8 +118,6 @@ class EthernetSoC(BaseSoC):
         self.add_csr("ethmac")
         self.add_interrupt("ethmac")
 
-        self.ethphy.crg.cd_eth_rx.clk.attr.add("keep")
-        self.ethphy.crg.cd_eth_tx.clk.attr.add("keep")
         self.platform.add_period_constraint(self.ethphy.crg.cd_eth_rx.clk, 1e9/125e6)
         self.platform.add_period_constraint(self.ethphy.crg.cd_eth_tx.clk, 1e9/125e6)
 
@@ -147,7 +139,10 @@ def main():
     cls = EthernetSoC if args.with_ethernet else BaseSoC
     soc = cls(toolchain=args.toolchain, sys_clk_freq=int(float(args.sys_clk_freq)), **soc_sdram_argdict(args))
     builder = Builder(soc, **builder_argdict(args))
-    builder.build(**trellis_argdict(args))
+    builder_kargs = {}
+    if args.toolchain == "trellis":
+        builder_kargs == trellis_argdict(args)
+    builder.build(**builder_kargs)
 
 if __name__ == "__main__":
     main()
