@@ -141,7 +141,6 @@ def _run_vivado(path, ver, cmds):
                 raise OSError("Unable to locate Vivado directory or settings.")
             vivado_cmd += "source " + settings
         vivado_cmd += " && vivado -mode tcl"
-        print(vivado_cmd, os.environ["SHELL"])
     with subprocess.Popen(vivado_cmd, stdin=subprocess.PIPE, shell=True, executable=os.environ["SHELL"]) as process:
         process.stdin.write(cmds.encode("ASCII"))
         process.communicate()
