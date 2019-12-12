@@ -366,21 +366,26 @@ void netboot(void)
 #endif
 
 #ifdef MAIN_RAM_BASE
-static unsigned int load_and_check_image_in_flash(unsigned int *base_address, unsigned int *load_address)
+static unsigned int load_and_check_image_in_flash(unsigned int *rom_address, unsigned int *ram_address)
 {
 	unsigned int length;
 	unsigned int crc;
+	unsigned int *write_address = ram_address;
+	unsigned int i;
 	unsigned int got_crc;
 
-	length = *base_address++;
+	length = *rom_address++;
 	if((length < 32) || (length > 16*1024*1024)) {
 		printf("Error: Invalid image length 0x%08x\n", length);
 		return 0;
 	}
 	printf("Loading %d bytes from flash...\n", length);
-	crc = *base_address++;
-	memcpy(load_address, base_address, length);
-	got_crc = crc32((unsigned char *)load_address, length);
+	crc = *rom_address++;
+	for (i = length / 4; i; i--)
+	    *write_address++ = *rom_address++;
+	for (i = 0; i < length % 4; i++)
+	    ((char*)write_address)[i] = ((char*)rom_address)[i];
+	got_crc = crc32((unsigned char *)ram_address, length);
 	if(crc != got_crc) {
 		printf("CRC failed (expected %08x, got %08x)\n", crc, got_crc);
 		return 0;
