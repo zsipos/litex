@@ -365,6 +365,30 @@ void netboot(void)
 #define FIRMWARE_BASE_ADDRESS (FLASH_BOOT_ADDRESS + 2 * sizeof(unsigned int))
 #endif
 
+#ifdef MAIN_RAM_BASE
+static unsigned int load_and_check_image_in_flash(unsigned int *base_address, unsigned int *load_address)
+{
+	unsigned int length;
+	unsigned int crc;
+	unsigned int got_crc;
+
+	length = *base_address++;
+	if((length < 32) || (length > 16*1024*1024)) {
+		printf("Error: Invalid image length 0x%08x\n", length);
+		return 0;
+	}
+	printf("Loading %d bytes from flash...\n", length);
+	crc = *base_address++;
+	memcpy(load_address, base_address, length);
+	got_crc = crc32((unsigned char *)load_address, length);
+	if(crc != got_crc) {
+		printf("CRC failed (expected %08x, got %08x)\n", crc, got_crc);
+		return 0;
+	}
+
+	return length;
+}
+#else
 static unsigned int check_image_in_flash(unsigned int *base_address)
 {
 	unsigned int length;
@@ -386,6 +410,7 @@ static unsigned int check_image_in_flash(unsigned int *base_address)
 
 	return length;
 }
+#endif
 
 #if defined(MAIN_RAM_BASE) && defined(CONFIG_CPU_TYPE_VEXRISCV) && defined(CONFIG_CPU_VARIANT_LINUX)
 static int copy_image_from_flash_to_ram(unsigned int *flash_address, unsigned int *ram_address)
@@ -448,15 +473,13 @@ void flashboot(void)
 #endif
 
 	printf("Booting from flash...\n");
+#ifdef MAIN_RAM_BASE
+    length = load_and_check_image_in_flash((unsigned int *)FLASH_BOOT_ADDRESS, (unsigned int *)MAIN_RAM_BASE);
+#else
 	length = check_image_in_flash((unsigned int *) FLASH_BOOT_ADDRESS);
+#endif
 	if(!length)
 		return;
-
-#ifdef MAIN_RAM_BASE
-	printf("Loading %d bytes from flash...\n", length);
-	// skip length and crc
-	memcpy((void *)MAIN_RAM_BASE, (unsigned int *)(FLASH_BOOT_ADDRESS + 2 * sizeof(unsigned int)), length);
-#endif
 
 	boot(0, 0, 0, FIRMWARE_BASE_ADDRESS);
 }
