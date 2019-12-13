@@ -75,7 +75,7 @@ class SpiFlashCommon(Module):
 
 
 class SpiFlashDualQuad(SpiFlashCommon, AutoCSR):
-    def __init__(self, pads, dummy=15, div=2, with_bitbang=True, endianness="big"):
+    def __init__(self, pads, dummy=15, div=2, with_bitbang=True, endianness="big", addr32bit=False):
         """
         Simple SPI flash.
         Supports multi-bit pseudo-parallel reads (aka Dual or Quad I/O Fast
@@ -112,12 +112,12 @@ class SpiFlashDualQuad(SpiFlashCommon, AutoCSR):
 
 
         read_cmd_params = {
-            4: (_format_cmd(_QIOFR, 4), 4*8),
-            2: (_format_cmd(_DIOFR, 2), 2*8),
-            1: (_format_cmd(_FAST_READ, 1), 1*8)
+            4: (_format_cmd(_QIOFR+int(addr32bit), 4), 4*8),
+            2: (_format_cmd(_DIOFR+int(addr32bit), 2), 2*8),
+            1: (_format_cmd(_FAST_READ+int(addr32bit), 1), 1*8)
         }
         read_cmd, cmd_width = read_cmd_params[spi_width]
-        addr_width = 24
+        addr_width = 32 if addr32bit else 24
 
         dq = TSTriple(spi_width)
         self.specials.dq = dq.get_tristate(pads.dq)
@@ -215,7 +215,7 @@ class SpiFlashDualQuad(SpiFlashCommon, AutoCSR):
 
 
 class SpiFlashSingle(SpiFlashCommon, AutoCSR):
-    def __init__(self, pads, dummy=15, div=2, with_bitbang=True, endianness="big"):
+    def __init__(self, pads, dummy=15, div=2, with_bitbang=True, endianness="big", addr32bit=False):
         """
         Simple memory-mapped SPI flash.
         Supports 1-bit reads. Only supports mode3 (cpol=1, cpha=1).
@@ -245,9 +245,9 @@ class SpiFlashSingle(SpiFlashCommon, AutoCSR):
         clk = Signal()
         wbone_width = len(bus.dat_r)
 
-        read_cmd = _FAST_READ
+        read_cmd = _FAST_READ + int(addr32bit)
         cmd_width = 8
-        addr_width = 24
+        addr_width = 32 if addr32bit else 24
 
         sr = Signal(max(cmd_width, addr_width, wbone_width))
         if endianness == "big":
