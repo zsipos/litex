@@ -29,10 +29,10 @@ def _build_pcf(named_sc, named_pc):
 
 # Timing Constraints (in pre_pack file) ------------------------------------------------------------
 
-def _build_pre_pack(vns, freq_cstrs):
+def _build_pre_pack(vns, clocks):
     r = ""
-    for sig in freq_cstrs:
-        r += """ctx.addClock("{}", {})\n""".format(vns.get_name(sig), freq_cstrs[sig])
+    for clk, period in clocks.items():
+        r += """ctx.addClock("{}", {})\n""".format(vns.get_name(clk), 1e3/period)
     return r
 
 # Yosys/Nextpnr Helpers/Templates ------------------------------------------------------------------
@@ -195,5 +195,7 @@ class LatticeIceStormToolchain:
     def add_period_constraint(self, platform, clk, period):
         clk.attr.add("keep")
         if clk in self.clocks:
-            raise ValueError("A period constraint already exists")
-        self.clocks[clk] = 1e3/period
+            if period != self.clocks[clk]:
+                raise ValueError("Clock already constrained to {:.2f}ns, new constraint to {:.2f}ns"
+                    .format(self.clocks[clk], period))
+        self.clocks[clk] = period

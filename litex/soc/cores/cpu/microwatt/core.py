@@ -18,8 +18,12 @@ class Microwatt(CPU):
     data_width           = 64
     endianness           = "little"
     gcc_triple           = ("powerpc64le-linux")
-    linker_output_format = "elf64-powerpc64le"
+    linker_output_format = "elf64-powerpcle"
     io_regions           = {0xc0000000: 0x10000000} # origin, length
+
+    @property
+    def mem_map(self):
+        return {"csr": 0xc0000000}
 
     @property
     def gcc_flags(self):
@@ -95,7 +99,7 @@ class Microwatt(CPU):
     @staticmethod
     def add_sources(platform):
         sdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "sources")
-        platform.add_source(sdir,
+        platform.add_sources(sdir,
             "decode_types.vhdl",
             "wishbone_types.vhdl",
             "common.vhdl",
