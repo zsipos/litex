@@ -74,7 +74,7 @@ class XilinxClocking(Module, AutoCSR):
                         valid = False
                         for d in range(*self.clkout_divide_range):
                             clk_freq = vco_freq/d
-                            if abs(clk_freq - f) < f*m:
+                            if abs(clk_freq - f) <= f*m:
                                 config["clkout{}_freq".format(n)]   = clk_freq
                                 config["clkout{}_divide".format(n)] = d
                                 config["clkout{}_phase".format(n)]  = p
@@ -448,7 +448,7 @@ class iCE40PLL(Module):
                         valid = False
                         for divq in range(*self.divq_range):
                             clk_freq = vco_freq/(2**divq)
-                            if abs(clk_freq - f) < f*m:
+                            if abs(clk_freq - f) <= f*m:
                                 config["divq"] = divq
                                 valid = True
                                 break
@@ -541,7 +541,7 @@ class ECP5PLL(Module):
                     valid = False
                     for d in range(*self.clko_div_range):
                         clk_freq = vco_freq/d
-                        if abs(clk_freq - f) < f*m:
+                        if abs(clk_freq - f) <= f*m:
                             config["clko{}_freq".format(n)] = clk_freq
                             config["clko{}_div".format(n)] = d
                             config["clko{}_phase".format(n)] = p
