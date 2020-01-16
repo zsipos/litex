@@ -43,14 +43,11 @@ class _CRG(Module):
 # BaseSoC ------------------------------------------------------------------------------------------
 
 class BaseSoC(SoCSDRAM):
-    def __init__(self, sys_clk_freq=int(125e6), integrated_rom_size=0x8000, **kwargs):
+    def __init__(self, sys_clk_freq=int(125e6), **kwargs):
         platform = kc705.Platform()
 
         # SoCSDRAM ---------------------------------------------------------------------------------
-        SoCSDRAM.__init__(self, platform, clk_freq=sys_clk_freq,
-            integrated_rom_size  = integrated_rom_size,
-            integrated_sram_size = 0x8000,
-            **kwargs)
+        SoCSDRAM.__init__(self, platform, clk_freq=sys_clk_freq, **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq)
@@ -76,18 +73,26 @@ class EthernetSoC(BaseSoC):
     mem_map.update(BaseSoC.mem_map)
 
     def __init__(self, **kwargs):
-        BaseSoC.__init__(self, integrated_rom_size=0x10000, **kwargs)
+        BaseSoC.__init__(self, **kwargs)
 
-        self.submodules.ethphy = LiteEthPHY(self.platform.request("eth_clocks"),
-                                            self.platform.request("eth"), clk_freq=self.clk_freq)
+        # Ethernet ---------------------------------------------------------------------------------
+        # phy
+        self.submodules.ethphy = LiteEthPHY(
+            clock_pads = self.platform.request("eth_clocks"),
+            pads       = self.platform.request("eth"),
+            clk_freq   = self.clk_freq)
         self.add_csr("ethphy")
-        self.submodules.ethmac = LiteEthMAC(phy=self.ethphy, dw=32,
-            interface="wishbone", endianness=self.cpu.endianness)
+        # mac
+        self.submodules.ethmac = LiteEthMAC(
+            phy        = self.ethphy,
+            dw         = 32,
+            interface  = "wishbone",
+            endianness = self.cpu.endianness)
         self.add_wb_slave(self.mem_map["ethmac"], self.ethmac.bus, 0x2000)
         self.add_memory_region("ethmac", self.mem_map["ethmac"], 0x2000, type="io")
         self.add_csr("ethmac")
         self.add_interrupt("ethmac")
-
+        # timing constraints
         self.platform.add_period_constraint(self.ethphy.crg.cd_eth_rx.clk, 1e9/125e6)
         self.platform.add_period_constraint(self.ethphy.crg.cd_eth_tx.clk, 1e9/125e6)
         self.platform.add_false_path_constraints(

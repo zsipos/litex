@@ -87,7 +87,7 @@ class SoCCore(Module):
                 # ROM parameters
                 integrated_rom_size=0, integrated_rom_init=[],
                 # SRAM parameters
-                integrated_sram_size=4096, integrated_sram_init=[],
+                integrated_sram_size=0, integrated_sram_init=[],
                 # MAIN_RAM parameters
                 integrated_main_ram_size=0, integrated_main_ram_init=[],
                 # CSR parameters
@@ -95,7 +95,7 @@ class SoCCore(Module):
                 # Identifier parameters
                 ident="", ident_version=False,
                 # UART parameters
-                with_uart=True, uart_name="serial", uart_baudrate=115200, uart_stub=False,
+                with_uart=True, uart_name="serial", uart_baudrate=115200,
                 # Timer parameters
                 with_timer=True,
                 # Controller parameters
@@ -139,8 +139,10 @@ class SoCCore(Module):
 
         self.integrated_rom_size        = integrated_rom_size
         self.integrated_rom_initialized = integrated_rom_init != []
-        self.integrated_sram_size       = integrated_sram_size
-        self.integrated_main_ram_size   = integrated_main_ram_size
+        if cpu_type is not None and integrated_sram_size == 0:
+            integrated_sram_size = 0x1000
+        self.integrated_sram_size     = integrated_sram_size
+        self.integrated_main_ram_size = integrated_main_ram_size
 
         assert csr_data_width in [8, 16, 32]
         self.csr_data_width    = csr_data_width
@@ -239,8 +241,12 @@ class SoCCore(Module):
 
         # Add UART
         if with_uart:
-            if uart_stub:
-                self.submodules.uart  = uart.UARTStub()
+            if uart_name in ["stub", "stream"]:
+                self.submodules.uart = uart.UART()
+                if uart_name == "stub":
+                    self.comb += self.uart.sink.ready.eq(1)
+            elif uart_name == "crossover":
+                self.submodules.uart = uart.UARTCrossover()
             else:
                 if uart_name == "jtag_atlantic":
                     from litex.soc.cores.jtag import JTAGAtlantic
@@ -560,13 +566,13 @@ def soc_core_args(parser):
     parser.add_argument("--cpu-reset-address", default=None, type=int,
                         help="CPU reset address (default=0x00000000 or ROM)")
     # ROM parameters
-    parser.add_argument("--integrated-rom-size", default=None, type=int,
+    parser.add_argument("--integrated-rom-size", default=0x8000, type=int,
                         help="size/enable the integrated (BIOS) ROM")
     parser.add_argument("--integrated-rom-file", default=None, type=str,
-                        help="integrated (BIOS) ROM binary file")
+                        help="integrated (BIOS) ROM binary file (default=32KB)")
     # SRAM parameters
-    parser.add_argument("--integrated_sram_size", default=None,
-                        help="size/enable the integrated SRAM")
+    parser.add_argument("--integrated_sram_size", default=0x1000,
+                        help="size/enable the integrated SRAM (default=4KB)")
     # MAIN_RAM parameters
     parser.add_argument("--integrated-main-ram-size", default=None, type=int,
                         help="size/enable the integrated main RAM")

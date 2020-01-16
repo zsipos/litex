@@ -37,19 +37,19 @@ class _CRG(Module):
 
         self.stop = Signal()
 
-        # clk / rst
+        # Clk / Rst
         clk100 = platform.request("clk100")
         rst_n  = platform.request("rst_n")
         platform.add_period_constraint(clk100, 1e9/100e6)
 
-        # power on reset
+        # Power on reset
         por_count = Signal(16, reset=2**16-1)
         por_done  = Signal()
         self.comb += self.cd_por.clk.eq(ClockSignal())
         self.comb += por_done.eq(por_count == 0)
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
-        # pll
+        # PLL
         self.submodules.pll = pll = ECP5PLL()
         pll.register_clkin(clk100, 100e6)
         pll.create_clkout(self.cd_sys2x_i, 2*sys_clk_freq)
@@ -72,13 +72,11 @@ class _CRG(Module):
 # BaseSoC ------------------------------------------------------------------------------------------
 
 class BaseSoC(SoCSDRAM):
-    def __init__(self, sys_clk_freq=int(75e6), toolchain="diamond", integrated_rom_size=0x8000, **kwargs):
+    def __init__(self, sys_clk_freq=int(75e6), toolchain="diamond", **kwargs):
         platform = versa_ecp5.Platform(toolchain=toolchain)
 
         # SoCSDRAM ---------------------------------------------------------------------------------
-        SoCSDRAM.__init__(self, platform, clk_freq=sys_clk_freq,
-            integrated_rom_size=integrated_rom_size,
-            **kwargs)
+        SoCSDRAM.__init__(self, platform, clk_freq=sys_clk_freq, **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq)
@@ -105,21 +103,28 @@ class EthernetSoC(BaseSoC):
     mem_map.update(BaseSoC.mem_map)
 
     def __init__(self, toolchain="diamond", **kwargs):
-        BaseSoC.__init__(self, toolchain=toolchain, integrated_rom_size=0x10000, **kwargs)
+        BaseSoC.__init__(self, toolchain=toolchain, **kwargs)
 
+        # Ethernet ---------------------------------------------------------------------------------
+        # phy
         self.submodules.ethphy = LiteEthPHYRGMII(
             self.platform.request("eth_clocks"),
             self.platform.request("eth"))
         self.add_csr("ethphy")
+        # mac
         self.submodules.ethmac = LiteEthMAC(phy=self.ethphy, dw=32,
             interface="wishbone", endianness=self.cpu.endianness)
         self.add_wb_slave(self.mem_map["ethmac"], self.ethmac.bus, 0x2000)
         self.add_memory_region("ethmac", self.mem_map["ethmac"], 0x2000, type="io")
         self.add_csr("ethmac")
         self.add_interrupt("ethmac")
-
+        # timing constraints
         self.platform.add_period_constraint(self.ethphy.crg.cd_eth_rx.clk, 1e9/125e6)
         self.platform.add_period_constraint(self.ethphy.crg.cd_eth_tx.clk, 1e9/125e6)
+        self.platform.add_false_path_constraints(
+            self.crg.cd_sys.clk,
+            self.ethphy.crg.cd_eth_rx.clk,
+            self.ethphy.crg.cd_eth_tx.clk)
 
 # Build --------------------------------------------------------------------------------------------
 
