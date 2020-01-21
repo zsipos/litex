@@ -79,7 +79,7 @@ class EthernetSoC(BaseSoC):
 
         # Ethernet ---------------------------------------------------------------------------------
         # phy
-        self.submodules.ethphy = LiteEthPHYMII(
+        self.submodules.ethphy = LiteEthPHYRMII(
             clock_pads = self.platform.request("eth_clocks"),
             pads       = self.platform.request("eth"))
         self.add_csr("ethphy")
@@ -89,8 +89,8 @@ class EthernetSoC(BaseSoC):
             dw         = 32,
             interface  = "wishbone",
             endianness = self.cpu.endianness)
-        self.add_wb_slave(self.mem_map["ethmac"], self.ethmac.bus, 0x2000)
         self.add_memory_region("ethmac", self.mem_map["ethmac"], 0x2000, type="io")
+        self.add_wb_slave(self.mem_regions["ethmac"].origin, self.ethmac.bus, 0x2000)
         self.add_csr("ethmac")
         self.add_interrupt("ethmac")
         # timing constraints

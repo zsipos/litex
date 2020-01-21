@@ -87,8 +87,8 @@ class EthernetSoC(BaseSoC):
             dw         = 32,
             interface  = "wishbone",
             endianness = self.cpu.endianness)
-        self.add_wb_slave(self.mem_map["ethmac"], self.ethmac.bus, 0x2000)
         self.add_memory_region("ethmac", self.mem_map["ethmac"], 0x2000, type="io")
+        self.add_wb_slave(self.mem_regions["ethmac"].origin, self.ethmac.bus, 0x2000)
         self.add_csr("ethmac")
         self.add_interrupt("ethmac")
         # timing constraints
@@ -139,8 +139,11 @@ def main():
     args = parser.parse_args()
 
     assert not (args.with_ethernet and args.with_etherbone)
-    cls = EthernetSoC if args.with_ethernet else BaseSoC
-    cls = EtherboneSoC if args.with_etherbone else BaseSoC
+    cls = BaseSoC
+    if args.with_ethernet:
+        cls = EthernetSoC
+    if args.with_etherbone:
+        cls = EtherboneSoC
     soc = cls(**soc_sdram_argdict(args))
     builder = Builder(soc, **builder_argdict(args))
     builder.build()

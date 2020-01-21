@@ -96,8 +96,7 @@ class BaseSoC(SoCSDRAM):
             sdram_module = EDY4016A(sys_clk_freq, "1:4")
             self.register_sdram(self.ddrphy,
                 geom_settings       = sdram_module.geom_settings,
-                timing_settings     = sdram_module.timing_settings,
-                main_ram_size_limit = 0x40000000)
+                timing_settings     = sdram_module.timing_settings)
 
 # EthernetSoC --------------------------------------------------------------------------------------
 
@@ -124,8 +123,8 @@ class EthernetSoC(BaseSoC):
             dw         = 32,
             interface  = "wishbone",
             endianness = self.cpu.endianness)
-        self.add_wb_slave(self.mem_map["ethmac"], self.ethmac.bus, 0x2000)
         self.add_memory_region("ethmac", self.mem_map["ethmac"], 0x2000, type="io")
+        self.add_wb_slave(self.mem_regions["ethmac"].origin, self.ethmac.bus, 0x2000)
         self.add_csr("ethmac")
         self.add_interrupt("ethmac")
         # timing constraints
