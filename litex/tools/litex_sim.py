@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # This file is Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2020 Piotr Binkowski <pbinkowski@antmicro.com>
 # This file is Copyright (c) 2017 Pierre-Olivier Vauboin <po@lambdaconcept>
 # License: BSD
 
@@ -16,8 +17,8 @@ from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
 from litex.soc.cores import uart
 
-from litedram.common import PhySettings
-from litedram.modules import MT48LC16M16
+from litedram import modules as litedram_modules
+from litedram.common import *
 from litedram.phy.model import SDRAMPHYModel
 
 from liteeth.phy.model import LiteEthPHYModel
@@ -62,6 +63,71 @@ class Platform(SimPlatform):
     def __init__(self):
         SimPlatform.__init__(self, "SIM", _io)
 
+# DFI PHY model settings ---------------------------------------------------------------------------
+
+sdram_module_nphases = {
+    "SDR":   1,
+    "DDR":   2,
+    "LPDDR": 2,
+    "DDR2":  2,
+    "DDR3":  4,
+}
+
+def get_sdram_phy_settings(memtype, data_width, clk_freq):
+    nphases = sdram_module_nphases[memtype]
+
+    if memtype == "SDR":
+        # Settings from gensdrphy
+        rdphase       = 0
+        wrphase       = 0
+        rdcmdphase    = 0
+        wrcmdphase    = 0
+        cl            = 2
+        cwl           = None
+        read_latency  = 4
+        write_latency = 0
+    elif memtype in ["DDR", "LPDDR"]:
+        # Settings from s6ddrphy
+        rdphase       = 0
+        wrphase       = 1
+        rdcmdphase    = 1
+        wrcmdphase    = 0
+        cl            = 3
+        cwl           = None
+        read_latency  = 5
+        write_latency = 0
+    elif memtype in ["DDR2", "DDR3"]:
+        # Settings from s7ddrphy
+        tck                 = 2/(2*nphases*clk_freq)
+        cmd_latency         = 0
+        cl, cwl             = get_cl_cw(memtype, tck)
+        cl_sys_latency      = get_sys_latency(nphases, cl)
+        cwl                 = cwl + cmd_latency
+        cwl_sys_latency     = get_sys_latency(nphases, cwl)
+        rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
+        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
+        read_latency        = 2 + cl_sys_latency + 2 + 3
+        write_latency       = cwl_sys_latency
+
+    sdram_phy_settings = {
+        "nphases":       nphases,
+        "rdphase":       rdphase,
+        "wrphase":       wrphase,
+        "rdcmdphase":    rdcmdphase,
+        "wrcmdphase":    wrcmdphase,
+        "cl":            cl,
+        "cwl":           cwl,
+        "read_latency":  read_latency,
+        "write_latency": write_latency,
+    }
+
+    return PhySettings(
+        memtype      = memtype,
+        databits     = data_width,
+        dfi_databits = data_width if memtype == "SDR" else 2*data_width,
+        **sdram_phy_settings,
+    )
+
 # Simulation SoC -----------------------------------------------------------------------------------
 
 class SimSoC(SoCSDRAM):
@@ -77,6 +143,8 @@ class SimSoC(SoCSDRAM):
         etherbone_mac_address = 0x10e2d5000000,
         etherbone_ip_address  = "192.168.1.50",
         with_analyzer         = False,
+        sdram_module          = "MT48LC16M16",
+        sdram_data_width      = 32,
         **kwargs):
         platform     = Platform()
         sys_clk_freq = int(1e6)
@@ -97,20 +165,14 @@ class SimSoC(SoCSDRAM):
 
         # SDRAM ------------------------------------------------------------------------------------
         if with_sdram:
-            sdram_module =  MT48LC16M16(100e6, "1:1") # use 100MHz timings
-            phy_settings = PhySettings(
-                memtype       = "SDR",
-                databits      = 32,
-                dfi_databits  = 16,
-                nphases       = 1,
-                rdphase       = 0,
-                wrphase       = 0,
-                rdcmdphase    = 0,
-                wrcmdphase    = 0,
-                cl            = 2,
-                read_latency  = 4,
-                write_latency = 0
-            )
+            sdram_clk_freq   = int(100e6) # FIXME: use 100MHz timings
+            sdram_module_cls = getattr(litedram_modules, sdram_module)
+            sdram_rate       = "1:{}".format(sdram_module_nphases[sdram_module_cls.memtype])
+            sdram_module     = sdram_module_cls(sdram_clk_freq, sdram_rate)
+            phy_settings     = get_sdram_phy_settings(
+                memtype    = sdram_module.memtype,
+                data_width = sdram_data_width,
+                clk_freq   = sdram_clk_freq)
             self.submodules.sdrphy = SDRAMPHYModel(sdram_module, phy_settings)
             self.register_sdram(
                 self.sdrphy,
@@ -169,17 +231,19 @@ def main():
     parser = argparse.ArgumentParser(description="Generic LiteX SoC Simulation")
     builder_args(parser)
     soc_sdram_args(parser)
-    parser.add_argument("--threads",        default=1,           help="Set number of threads (default=1)")
-    parser.add_argument("--rom-init",       default=None,        help="rom_init file")
-    parser.add_argument("--ram-init",       default=None,        help="ram_init file")
-    parser.add_argument("--with-sdram",     action="store_true", help="Enable SDRAM support")
-    parser.add_argument("--with-ethernet",  action="store_true", help="Enable Ethernet support")
-    parser.add_argument("--with-etherbone", action="store_true", help="Enable Etherbone support")
-    parser.add_argument("--with-analyzer",  action="store_true", help="Enable Analyzer support")
-    parser.add_argument("--trace",          action="store_true", help="Enable VCD tracing")
-    parser.add_argument("--trace-start",    default=0,           help="Cycle to start VCD tracing")
-    parser.add_argument("--trace-end",      default=-1,          help="Cycle to end VCD tracing")
-    parser.add_argument("--opt-level",      default="O3",        help="Compilation optimization level")
+    parser.add_argument("--threads",            default=1,              help="Set number of threads (default=1)")
+    parser.add_argument("--rom-init",           default=None,           help="rom_init file")
+    parser.add_argument("--ram-init",           default=None,           help="ram_init file")
+    parser.add_argument("--with-sdram",         action="store_true",    help="Enable SDRAM support")
+    parser.add_argument("--sdram-module",       default="MT48LC16M16",  help="Select SDRAM chip")
+    parser.add_argument("--sdram-data-width",   default=32,             help="Set SDRAM chip data width")
+    parser.add_argument("--with-ethernet",      action="store_true",    help="Enable Ethernet support")
+    parser.add_argument("--with-etherbone",     action="store_true",    help="Enable Etherbone support")
+    parser.add_argument("--with-analyzer",      action="store_true",    help="Enable Analyzer support")
+    parser.add_argument("--trace",              action="store_true",    help="Enable VCD tracing")
+    parser.add_argument("--trace-start",        default=0,              help="Cycle to start VCD tracing")
+    parser.add_argument("--trace-end",          default=-1,             help="Cycle to end VCD tracing")
+    parser.add_argument("--opt-level",          default="O3",           help="Compilation optimization level")
     args = parser.parse_args()
 
     soc_kwargs     = soc_sdram_argdict(args)
@@ -204,6 +268,8 @@ def main():
     else:
         assert args.ram_init is None
         soc_kwargs["integrated_main_ram_size"] = 0x0
+        soc_kwargs["sdram_module"] = args.sdram_module
+        soc_kwargs["sdram_data_width"] = int(args.sdram_data_width)
     if args.with_ethernet or args.with_etherbone:
         sim_config.add_module("ethernet", "eth", args={"interface": "tap0", "ip": "192.168.1.100"})
 
