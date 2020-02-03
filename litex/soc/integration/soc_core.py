@@ -243,6 +243,9 @@ class SoCCore(Module):
                 self.submodules.uart = uart.UART()
                 if uart_name == "stub":
                     self.comb += self.uart.sink.ready.eq(1)
+            elif uart_name == "bridge":
+                self.submodules.uart = uart.UARTWishboneBridge(platform.request("serial"), clk_freq, uart_baudrate)
+                self.add_wb_master(self.uart.wishbone)
             elif uart_name == "crossover":
                 self.submodules.uart = uart.UARTCrossover()
             else:
@@ -610,9 +613,9 @@ def soc_core_args(parser):
                         help="CPU reset address (default=0x00000000 or ROM)")
     # ROM parameters
     parser.add_argument("--integrated-rom-size", default=0x8000, type=int,
-                        help="size/enable the integrated (BIOS) ROM")
+                        help="size/enable the integrated (BIOS) ROM (default=32KB)")
     parser.add_argument("--integrated-rom-file", default=None, type=str,
-                        help="integrated (BIOS) ROM binary file (default=32KB)")
+                        help="integrated (BIOS) ROM binary file")
     # SRAM parameters
     parser.add_argument("--integrated-sram-size", default=0x1000, type=int,
                         help="size/enable the integrated SRAM (default=4KB)")

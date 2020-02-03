@@ -212,5 +212,5 @@ def builder_argdict(args):
         "compile_gateware": not args.no_compile_gateware,
         "gateware_toolchain_path": args.gateware_toolchain_path,
         "csr_csv": args.csr_csv,
-        "csr_json": args.csr_json
+        "csr_json": args.csr_json,
     }
