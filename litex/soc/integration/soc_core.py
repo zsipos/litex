@@ -362,9 +362,9 @@ class SoCCore(Module):
         if size is not None:
             # FIXME: the memory of rocket chip starts at shadow_base!!!
             if self.cpu.name and self.cpu.name.startswith("rocket"):
-                address_decoder = mem_decoder(address_or_address_decoder, size)
+                address_decoder = mem_decoder_rocket(address_or_address_decoder, size)
             else:
-                address_decoder = mem_decoder_retro_compat_shadow_base(address_or_address_decoder, size)
+                address_decoder = mem_decoder(address_or_address_decoder, size)
         else:
             address_decoder = address_or_address_decoder
         self._wb_slaves.append((address_decoder, interface))
