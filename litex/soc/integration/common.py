@@ -19,13 +19,6 @@ def mem_decoder(address, size=0x10000000):
     size    >>= 2 # bytes to words aligned
     return lambda a: (a[log2_int(size):] == (address >> log2_int(size)))
 
-def mem_decoder_rocket(address, size=0x10000000):
-    size = 2**log2_int(size, False)
-    assert (address & (size - 1)) == 0
-    address >>= 2 # bytes to words aligned
-    size    >>= 2 # bytes to words aligned
-    return lambda a: (a[log2_int(size):] == (address >> log2_int(size)))
-
 def get_version(with_time=True):
     if with_time:
         return datetime.datetime.fromtimestamp(
