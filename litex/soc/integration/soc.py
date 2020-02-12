@@ -917,12 +917,12 @@ class LiteXSoC(SoC):
 
         # CPU <--> LiteDRAM ------------------------------------------------------------------------
         if hasattr(self, "cpu") and hasattr(self.cpu, "connect_sdram"):
-            main_ram_size = 2 ** (module.geom_settings.bankbits +
-                                  module.geom_settings.rowbits +
-                                  module.geom_settings.colbits) * phy.settings.databits // 8
-            if self.max_sdram_size:
-                main_ram_size = min(main_ram_size, self.max_sdram_size)
-            self.cpu.connect_sdram(self, main_ram_size)
+            sdram_size = 2**(module.geom_settings.bankbits +
+                             module.geom_settings.rowbits +
+                             module.geom_settings.colbits)*phy.settings.databits//8
+            if size is not None:
+                sdram_size = min(sdram_size, size)
+            self.cpu.connect_sdram(self, sdram_size)
             return
 
         # LiteDRAM port ----------------------------------------------------------------------------
