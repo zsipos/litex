@@ -482,8 +482,9 @@ class SoCCSRHandler(SoCLocHandler):
         self.paging        = paging
         self.masters       = {}
         self.regions       = {}
-        self.logger.info("{}-bit CSR Bus, {}KiB Address Space, {}B Paging (Up to {} Locations).".format(
+        self.logger.info("{}-bit CSR Bus, {}-bit Aligned, {}KiB Address Space, {}B Paging (Up to {} Locations).".format(
             colorer(self.data_width),
+            colorer(self.alignment),
             colorer(2**self.address_width/2**10),
             colorer(self.paging),
             colorer(self.n_locs)))
@@ -494,6 +495,21 @@ class SoCCSRHandler(SoCLocHandler):
             self.add(name, n)
 
         self.logger.info("CSR Handler {}.".format(colorer("created", color="green")))
+
+    # Update CSR Alignment ----------------------------------------------------------------------------
+    def update_alignment(self, alignment):
+        # Check Alignment
+        if alignment not in self.supported_alignment:
+            self.logger.error("Unsupported {}: {} supporteds: {:s}".format(
+                colorer("Alignment", color="red"),
+                colorer(alignment),
+                colorer(", ".join(str(x) for x in self.supported_alignment))))
+            raise
+        self.logger.info("Alignment {} from {}-bit to {}-bit.".format(
+            colorer("updated", color="cyan"),
+            colorer(self.alignment),
+            colorer(alignment)))
+        self.alignment = alignment
 
     # Add Master -----------------------------------------------------------------------------------
     def add_master(self, name=None, master=None):
@@ -536,8 +552,9 @@ class SoCCSRHandler(SoCLocHandler):
 
     # Str ------------------------------------------------------------------------------------------
     def __str__(self):
-        r = "{}-bit CSR Bus, {}KiB Address Space, {}B Paging (Up to {} Locations).\n".format(
+        r = "{}-bit CSR Bus, {}-bit Aligned, {}KiB Address Space, {}B Paging (Up to {} Locations).\n".format(
             colorer(self.data_width),
+            colorer(self.alignment),
             colorer(2**self.address_width/2**10),
             colorer(self.paging),
             colorer(self.n_locs))
@@ -747,6 +764,7 @@ class SoC(Module):
         for n, (origin, size) in enumerate(self.cpu.io_regions.items()):
             self.bus.add_region("io{}".format(n), SoCIORegion(origin=origin, size=size, cached=False))
         self.mem_map.update(self.cpu.mem_map) # FIXME
+        self.csr.update_alignment(self.cpu.data_width)
         # Add Bus Masters/CSR/IRQs
         if not isinstance(self.cpu, cpu.CPUNone):
             if reset_address is None:
