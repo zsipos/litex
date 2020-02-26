@@ -19,6 +19,12 @@ AR_normal      := $(TARGET_PREFIX)gcc-ar
 else
 AR_normal      := $(TARGET_PREFIX)ar
 endif
+ifeq ($(CPU), rocket32)
+AR_normal      := $(TARGET_PREFIX)ar
+endif
+ifeq ($(CPU), rocket64)
+AR_normal      := $(TARGET_PREFIX)ar
+endif
 LD_normal      := $(TARGET_PREFIX)ld
 OBJCOPY_normal := $(TARGET_PREFIX)objcopy
 
@@ -52,7 +58,11 @@ DEPFLAGS += -MD -MP
 INCLUDES = -I$(SOC_DIRECTORY)/software/include/base -I$(SOC_DIRECTORY)/software/include -I$(SOC_DIRECTORY)/common -I$(BUILDINC_DIRECTORY)
 COMMONFLAGS = $(DEPFLAGS) -Os $(CPUFLAGS) -g3 -fomit-frame-pointer -Wall -fno-builtin -nostdinc $(INCLUDES) -ffunction-sections -fdata-sections -nostartfiles -nostdlib -nodefaultlibs
 ifneq ($(CPU), lm32)
+ifneq ($(CPU), rocket32)
+ifneq ($(CPU), rocket64)
 COMMONFLAGS += -flto -fuse-linker-plugin
+endif
+endif
 endif
 CFLAGS = $(COMMONFLAGS) -fexceptions -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes
 CXXFLAGS = $(COMMONFLAGS) -std=c++11 -I$(SOC_DIRECTORY)/software/include/basec++ -fexceptions -fno-rtti -ffreestanding
