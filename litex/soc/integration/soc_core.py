@@ -255,25 +255,25 @@ def soc_core_args(parser):
                         help="select CPU: {}, (default=vexriscv)".format(", ".join(iter(cpu.CPUS.keys()))))
     parser.add_argument("--cpu-variant", default=None,
                         help="select CPU variant, (default=standard)")
-    parser.add_argument("--cpu-reset-address", default=None, type=int,
+    parser.add_argument("--cpu-reset-address", default=None, type=auto_int,
                         help="CPU reset address (default=0x00000000 or ROM)")
     # ROM parameters
-    parser.add_argument("--integrated-rom-size", default=0x8000, type=int,
+    parser.add_argument("--integrated-rom-size", default=0x8000, type=auto_int,
                         help="size/enable the integrated (BIOS) ROM (default=32KB)")
     parser.add_argument("--integrated-rom-file", default=None, type=str,
                         help="integrated (BIOS) ROM binary file")
     # SRAM parameters
-    parser.add_argument("--integrated-sram-size", default=0x1000, type=int,
+    parser.add_argument("--integrated-sram-size", default=0x1000, type=auto_int,
                         help="size/enable the integrated SRAM (default=4KB)")
     # MAIN_RAM parameters
-    parser.add_argument("--integrated-main-ram-size", default=None, type=int,
+    parser.add_argument("--integrated-main-ram-size", default=None, type=auto_int,
                         help="size/enable the integrated main RAM")
     # CSR parameters
-    parser.add_argument("--csr-data-width", default=None, type=int,
+    parser.add_argument("--csr-data-width", default=None, type=auto_int,
                         help="CSR bus data-width (8 or 32, default=8)")
-    parser.add_argument("--csr-address-width", default=14, type=int,
+    parser.add_argument("--csr-address-width", default=14, type=auto_int,
                         help="CSR bus address-width")
-    parser.add_argument("--csr-paging", default=0x800, type=int,
+    parser.add_argument("--csr-paging", default=0x800, type=auto_int,
                         help="CSR bus paging")
     # Identifier parameters
     parser.add_argument("--ident", default=None, type=str,
@@ -281,20 +281,20 @@ def soc_core_args(parser):
     parser.add_argument("--ident-version", default=None, type=bool,
                         help="add date/time to SoC identifier (default=False)")
     # UART parameters
-    parser.add_argument("--with-uart", default=None, type=bool,
-                        help="with UART (default=True)")
+    parser.add_argument("--no-uart", action="store_true",
+                        help="Disable UART (default=False)")
     parser.add_argument("--uart-name", default="serial", type=str,
                         help="UART type/name (default=serial)")
-    parser.add_argument("--uart-baudrate", default=None, type=int,
+    parser.add_argument("--uart-baudrate", default=None, type=auto_int,
                         help="UART baudrate (default=115200)")
-    parser.add_argument("--uart-fifo-depth", default=16, type=int,
+    parser.add_argument("--uart-fifo-depth", default=16, type=auto_int,
                         help="UART FIFO depth (default=16)")
     # Timer parameters
-    parser.add_argument("--with-timer", default=None, type=bool,
-                        help="with Timer (default=True)")
+    parser.add_argument("--no-timer", action="store_true",
+                        help="Disable Timer (default=False)")
     # Controller parameters
-    parser.add_argument("--with-ctrl", default=None, type=bool,
-                        help="with Controller (default=True)")
+    parser.add_argument("--no-ctrl", action="store_true",
+                        help="Disable Controller (default=False)")
 
 def soc_core_argdict(args):
     r = dict()
@@ -304,7 +304,10 @@ def soc_core_argdict(args):
         args.integrated_rom_size = len(args.integrated_rom_init)*4
     for a in inspect.getargspec(SoCCore.__init__).args:
         if a not in ["self", "platform"]:
-            arg = getattr(args, a, None)
+            if a in ["with_uart", "with_timer", "with_ctrl"]:
+                arg = not getattr(args, a.replace("with", "no"), True)
+            else:
+                arg = getattr(args, a, None)
             if arg is not None:
                 r[a] = arg
     return r

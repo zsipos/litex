@@ -27,6 +27,10 @@ from litex.soc.interconnect import axi
 logging.basicConfig(level=logging.INFO)
 
 # Helpers ------------------------------------------------------------------------------------------
+
+def auto_int(x):
+    return int(x, 0)
+
 def colorer(s, color="bright"):
     header  = {
         "bright": "\x1b[1m",
@@ -1023,8 +1027,6 @@ class LiteXSoC(SoC):
     def add_ethernet(self, phy):
         # Imports
         from liteeth.mac import LiteEthMAC
-        # PHY
-        self.add_csr("ethphy")
         # MAC
         self.submodules.ethmac = LiteEthMAC(
             phy        = phy,
