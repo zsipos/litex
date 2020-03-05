@@ -7,22 +7,29 @@ endif
 RM ?= rm -f
 PYTHON ?= python3
 
-ifeq ($(CLANG),1)
+ifneq ($(CPU), lm32)
+LTO = 0
+else
+LTO = 1
+endif
+
+ifeq ($(CPU), rocket32)
+LTO = 1
+endif
+ifeq ($(CPU), rocket64)
+LTO = 1
+endif
+
+ifeq ($(CLANG), 1)
 CC_normal      := clang -target $(TRIPLE) -integrated-as
 CX_normal      := clang++ -target $(TRIPLE) -integrated-as
 else
 CC_normal      := $(TARGET_PREFIX)gcc -std=gnu99
 CX_normal      := $(TARGET_PREFIX)g++
 endif
-ifneq ($(CPU), lm32)
+ifneq ($(LTO), 1)
 AR_normal      := $(TARGET_PREFIX)gcc-ar
 else
-AR_normal      := $(TARGET_PREFIX)ar
-endif
-ifeq ($(CPU), rocket32)
-AR_normal      := $(TARGET_PREFIX)ar
-endif
-ifeq ($(CPU), rocket64)
 AR_normal      := $(TARGET_PREFIX)ar
 endif
 LD_normal      := $(TARGET_PREFIX)ld
@@ -34,7 +41,7 @@ AR_quiet      = @echo " AR      " $@ && $(AR_normal)
 LD_quiet      = @echo " LD      " $@ && $(LD_normal)
 OBJCOPY_quiet = @echo " OBJCOPY " $@ && $(OBJCOPY_normal)
 
-ifeq ($(V),1)
+ifeq ($(V), 1)
 	CC = $(CC_normal)
 	CX = $(CX_normal)
 	AR = $(AR_normal)
@@ -55,18 +62,15 @@ DEPFLAGS += -MD -MP
 
 # Toolchain options
 #
-INCLUDES = -I$(SOC_DIRECTORY)/software/include/base -I$(SOC_DIRECTORY)/software/include -I$(SOC_DIRECTORY)/common -I$(BUILDINC_DIRECTORY)
-COMMONFLAGS = $(DEPFLAGS) -Os $(CPUFLAGS) -g3 -fomit-frame-pointer -Wall -fno-builtin -nostdinc $(INCLUDES) -ffunction-sections -fdata-sections -nostartfiles -nostdlib -nodefaultlibs
-ifneq ($(CPU), lm32)
-ifneq ($(CPU), rocket32)
-ifneq ($(CPU), rocket64)
+INCLUDES    = -I$(SOC_DIRECTORY)/software/include/base -I$(SOC_DIRECTORY)/software/include -I$(SOC_DIRECTORY)/common -I$(BUILDINC_DIRECTORY)
+COMMONFLAGS = $(DEPFLAGS) -Os $(CPUFLAGS) -g3 -fomit-frame-pointer -Wall -fno-builtin -nostdinc $(INCLUDES)
+COMMONFLAGS += -ffunction-sections -fdata-sections -nostartfiles -nostdlib -nodefaultlibs
+ifneq ($(LTO), 1)
 COMMONFLAGS += -flto -fuse-linker-plugin
 endif
-endif
-endif
-CFLAGS = $(COMMONFLAGS) -fexceptions -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes
+CFLAGS   = $(COMMONFLAGS) -fexceptions -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes
 CXXFLAGS = $(COMMONFLAGS) -std=c++11 -I$(SOC_DIRECTORY)/software/include/basec++ -fexceptions -fno-rtti -ffreestanding
-LDFLAGS = -nostdlib -nodefaultlibs -Os $(CPUFLAGS) -L$(BUILDINC_DIRECTORY)
+LDFLAGS  = -nostdlib -nodefaultlibs -Os $(CPUFLAGS) -L$(BUILDINC_DIRECTORY)
 
 define compilexx
 $(CX) -c $(CXXFLAGS) $(1) $< -o $@
