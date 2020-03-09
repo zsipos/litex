@@ -14,10 +14,10 @@ LTO = 1
 endif
 
 ifeq ($(CPU), rocket32)
-LTO = 1
+LTO = 0
 endif
 ifeq ($(CPU), rocket64)
-LTO = 1
+LTO = 0
 endif
 
 ifeq ($(CLANG), 1)
@@ -27,7 +27,7 @@ else
 CC_normal      := $(TARGET_PREFIX)gcc -std=gnu99
 CX_normal      := $(TARGET_PREFIX)g++
 endif
-ifneq ($(LTO), 1)
+ifeq ($(LTO), 1)
 AR_normal      := $(TARGET_PREFIX)gcc-ar
 else
 AR_normal      := $(TARGET_PREFIX)ar
