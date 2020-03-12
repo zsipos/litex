@@ -257,8 +257,9 @@ void sdrwr(char *startaddr)
 #define NBMODULES DFII_PIX_DATA_BYTES/2
 #endif
 
-#ifdef DDRPHY_CMD_DELAY
-static void ddrphy_cdly(unsigned int delay) {
+#if defined(DDRPHY_CMD_DELAY) || defined(USDDRPHY_DEBUG)
+void ddrphy_cdly(unsigned int delay) {
+	printf("Setting clk/cmd delay to %d taps\n", delay);
 #if CSR_DDRPHY_EN_VTC_ADDR
 	ddrphy_en_vtc_write(0);
 #endif
@@ -994,7 +995,6 @@ int sdrinit(void)
 	ddrphy_en_vtc_write(0);
 #endif
 #ifdef DDRPHY_CMD_DELAY
-	printf("Setting clk/cmd delay to %d taps\n", DDRPHY_CMD_DELAY);
 	ddrphy_cdly(DDRPHY_CMD_DELAY);
 #endif
 	sdrlevel();
@@ -1063,6 +1063,7 @@ static void sdrmproff(void)
 void sdrmpr(void)
 {
 	int module, phase;
+	unsigned char buf[DFII_PIX_DATA_BYTES];
 	printf("Read SDRAM MPR...\n");
 
 	/* rst phy */
@@ -1084,8 +1085,10 @@ void sdrmpr(void)
 	for (module=0; module < NBMODULES; module++) {
 		printf("m%d: ", module);
 		for(phase=0; phase<DFII_NPHASES; phase++) {
-			printf("%d", MMPTR(sdram_dfii_pix_rddata_addr[phase]+4*(NBMODULES-module-1)) & 0x1);
-			printf("%d", MMPTR(sdram_dfii_pix_rddata_addr[phase]+4*(2*NBMODULES-module-1)) & 0x1);
+			csr_rd_buf_uint8(sdram_dfii_pix_rddata_addr[phase],
+					 buf, DFII_PIX_DATA_BYTES);
+			printf("%d", buf[  NBMODULES-module-1] & 0x1);
+			printf("%d", buf[2*NBMODULES-module-1] & 0x1);
 		}
 		printf("\n");
 	}
