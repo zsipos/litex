@@ -4,6 +4,7 @@
 
 """Clock Abstraction Modules"""
 
+import math
 import logging
 
 from migen import *
@@ -47,6 +48,17 @@ def compute_config_log(logger, config):
         log += "{}{}: {}\n".format(name, " "*(length-len(name)), value)
     log = log[:-1]
     logger.info(log)
+
+# Helpers ------------------------------------------------------------------------------------------
+
+def clkdiv_range(start, stop, step=1):
+    start   = float(start)
+    stop    = float(stop)
+    step    = float(step)
+    current = start
+    while current < stop:
+        yield int(current) if math.floor(current) == current else current
+        current += step
 
 # Xilinx / Generic ---------------------------------------------------------------------------------
 
@@ -114,14 +126,20 @@ class XilinxClocking(Module, AutoCSR):
                     vco_freq <= vco_freq_max*(1 - self.vco_margin)):
                     for n, (clk, f, p, m) in sorted(self.clkouts.items()):
                         valid = False
-                        for d in range(*self.clkout_divide_range):
-                            clk_freq = vco_freq/d
-                            if abs(clk_freq - f) <= f*m:
-                                config["clkout{}_freq".format(n)]   = clk_freq
-                                config["clkout{}_divide".format(n)] = d
-                                config["clkout{}_phase".format(n)]  = p
-                                valid = True
-                                break
+                        d_ranges = [self.clkout_divide_range]
+                        if getattr(self, "clkout{}_divide_range".format(n), None) is not None:
+                            d_ranges += [getattr(self, "clkout{}_divide_range".format(n))]
+                        for d_range in d_ranges:
+                            for d in clkdiv_range(*d_range):
+                                clk_freq = vco_freq/d
+                                if abs(clk_freq - f) <= f*m:
+                                    config["clkout{}_freq".format(n)]   = clk_freq
+                                    config["clkout{}_divide".format(n)] = d
+                                    config["clkout{}_phase".format(n)]  = p
+                                    valid = True
+                                    break
+                                if valid:
+                                    break
                         if not valid:
                             all_valid = False
                 else:
@@ -229,7 +247,7 @@ class S6DCM(XilinxClocking):
         self.logger = logging.getLogger("S6DCM")
         self.logger.info("Creating S6DCM, {}.".format(colorer("speedgrade {}".format(speedgrade))))
         XilinxClocking.__init__(self)
-        self.divclk_divide_range = (1, 1) # FIXME
+        self.divclk_divide_range = (1, 2) # FIXME
         self.clkin_freq_range = {
             -1: (0.5e6, 200e6),
             -2: (0.5e6, 333e6),
@@ -296,7 +314,8 @@ class S7PLL(XilinxClocking):
 
 
 class S7MMCM(XilinxClocking):
-    nclkouts_max = 7
+    nclkouts_max         = 7
+    clkout0_divide_range = (1, (128 + 1/8), 1/8) # Fractional Divide available on CLKOUT0
 
     def __init__(self, speedgrade=-1):
         self.logger = logging.getLogger("S7MMCM")
