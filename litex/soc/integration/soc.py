@@ -6,13 +6,15 @@
 import logging
 import time
 import datetime
-from math import log2
+from math import log2, ceil
 
 from migen import *
 
 from litex.soc.cores import cpu
 from litex.soc.cores.identifier import Identifier
 from litex.soc.cores.timer import Timer
+from litex.soc.cores.spi_flash import SpiFlash
+from litex.soc.cores.spi import SPIMaster
 
 from litex.soc.interconnect.csr import *
 from litex.soc.interconnect import csr_bus
@@ -1044,24 +1046,89 @@ class LiteXSoC(SoC):
                 base_address = self.bus.regions["main_ram"].origin)
 
     # Add Ethernet ---------------------------------------------------------------------------------
-    def add_ethernet(self, phy):
+    def add_ethernet(self, name="ethmac", phy=None):
         # Imports
         from liteeth.mac import LiteEthMAC
         # MAC
-        self.submodules.ethmac = LiteEthMAC(
+        ethmac = LiteEthMAC(
             phy        = phy,
             dw         = 32,
             interface  = "wishbone",
             endianness = self.cpu.endianness)
-        ethmac_region = SoCRegion(origin=self.mem_map.get("ethmac", None),
-                                  size=0x2000, cached=False)
-        self.bus.add_slave(name="ethmac", slave=self.ethmac.bus, region=ethmac_region)
-        self.add_csr("ethmac")
-        self.add_interrupt("ethmac")
+        setattr(self.submodules, name, ethmac)
+        ethmac_region = SoCRegion(origin=self.mem_map.get(name, None), size=0x2000, cached=False)
+        self.bus.add_slave(name=name, slave=ethmac.bus, region=ethmac_region)
+        self.add_csr(name)
+        self.add_interrupt(name)
         # Timing constraints
-        self.platform.add_period_constraint(phy.crg.cd_eth_rx.clk, 1e9/phy.rx_clk_freq)
-        self.platform.add_period_constraint(phy.crg.cd_eth_tx.clk, 1e9/phy.tx_clk_freq)
+        if hasattr(phy, "crg"):
+            eth_rx_clk = phy.crg.cd_eth_rx.clk
+            eth_tx_clk = phy.crg.cd_eth_tx.clk
+        else:
+            eth_rx_clk = phy.cd_eth_rx.clk
+            eth_tx_clk = phy.cd_eth_tx.clk
+        self.platform.add_period_constraint(eth_rx_clk, 1e9/phy.rx_clk_freq)
+        self.platform.add_period_constraint(eth_tx_clk, 1e9/phy.tx_clk_freq)
         self.platform.add_false_path_constraints(
             self.crg.cd_sys.clk,
-            phy.crg.cd_eth_rx.clk,
-            phy.crg.cd_eth_tx.clk)
+            eth_rx_clk,
+            eth_tx_clk)
+
+    # Add Etherbone --------------------------------------------------------------------------------
+    def add_etherbone(self, name="etherbone", phy=None,
+        mac_address = 0x10e2d5000000,
+        ip_address  = "192.168.1.50",
+        udp_port    = 1234):
+        # Imports
+        from liteeth.core import LiteEthUDPIPCore
+        from liteeth.frontend.etherbone import LiteEthEtherbone
+        # Core
+        ethcore = LiteEthUDPIPCore(
+            phy         = self.ethphy,
+            mac_address = mac_address,
+            ip_address  = ip_address,
+            clk_freq    = self.clk_freq)
+        self.submodules += ethcore
+        # Etherbone
+        etherbone = LiteEthEtherbone(ethcore.udp, udp_port)
+        setattr(self.submodules, name, etherbone)
+        self.add_wb_master(etherbone.wishbone.bus)
+        # Timing constraints
+        if hasattr(phy, "crg"):
+            eth_rx_clk = phy.crg.cd_eth_rx.clk
+            eth_tx_clk = phy.crg.cd_eth_tx.clk
+        else:
+            eth_rx_clk = phy.cd_eth_rx.clk
+            eth_tx_clk = phy.cd_eth_tx.clk
+        self.platform.add_period_constraint(eth_rx_clk, 1e9/phy.rx_clk_freq)
+        self.platform.add_period_constraint(eth_tx_clk, 1e9/phy.tx_clk_freq)
+        self.platform.add_false_path_constraints(
+            self.crg.cd_sys.clk,
+            eth_rx_clk,
+            eth_tx_clk)
+
+    # Add SPI Flash --------------------------------------------------------------------------------
+    def add_spi_flash(self, name="spiflash", mode="4x", dummy_cycles=None, clk_freq=None):
+        assert dummy_cycles is not None                 # FIXME: Get dummy_cycles from SPI Flash
+        assert mode in ["4x"]                           # FIXME: Add 1x support.
+        if clk_freq is None: clk_freq = self.clk_freq/2 # FIXME: Get max clk_freq from SPI Flash
+        spiflash = SpiFlash(
+            pads         = self.platform.request(name + mode),
+            dummy        = dummy_cycles,
+            div          = ceil(self.clk_freq/clk_freq),
+            with_bitbang = True,
+            endianness   = self.cpu.endianness)
+        spiflash.add_clk_primitive(self.platform.device)
+        setattr(self.submodules, name, spiflash)
+        self.add_memory_region(name, self.mem_map[name], 0x1000000) # FIXME: Get size from SPI Flash
+        self.add_wb_slave(self.mem_map[name], spiflash.bus)
+        self.add_csr(name)
+
+    # Add SPI SDCard -------------------------------------------------------------------------------
+    def add_spi_sdcard(self, name="spisdcard", clk_freq=400e3):
+        pads = self.platform.request(name)
+        if hasattr(pads, "rst"):
+            self.comb += pads.rst.eq(0)
+        spisdcard = SPIMaster(pads, 8, self.sys_clk_freq, 400e3)
+        setattr(self.submodules, name, spisdcard)
+        self.add_csr(name)

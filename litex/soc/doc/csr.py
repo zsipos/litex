@@ -242,8 +242,12 @@ class DocumentedCSRRegion:
             for field in reg.fields:
                 field_name = field.name
                 attr_str = ""
-                if field.reset_value != 0:
-                    attr_str = "\"attr\": '" + str(field.reset_value) + "', "
+                if isinstance(field.reset_value, Constant):
+                    field_reset_value = field.reset_value.value
+                else:
+                    field_reset_value = field.reset_value
+                if field_reset_value != 0:
+                    attr_str = "\"attr\": '" + str(field_reset_value) + "', "
                 type_str = ""
                 if field.pulse:
                     type_str = "\"type\": 4, "
@@ -257,8 +261,8 @@ class DocumentedCSRRegion:
                 print("                {\"name\": \"" + field_name + "\",  " + type_str + attr_str + "\"bits\": " + str(field.size) + "}" + term, file=stream)
                 bit_offset = field.offset + field.size
                 min_field_size = min(min_field_size, field.size)
-                if min_field_size < 8:
-                    multilane = True
+            if min_field_size < 8:
+                multilane = True
             if bit_offset != self.busword:
                 print("                {\"bits\": " + str(self.busword - bit_offset) + "}", file=stream)
         else:
@@ -270,10 +274,11 @@ class DocumentedCSRRegion:
                 attr_str = "\"attr\": 'reset: " + str(reg.reset_value) + "', "
             print("                {\"name\": \"" + reg.short_name.lower() + self.bit_range(reg.offset, reg.offset + reg.size, empty_if_zero=True) + "\", " + attr_str + "\"bits\": " + str(reg.size) + "}" + term, file=stream)
             if reg.size != self.csr_data_width:
-                multilane = True
                 print("                {\"bits\": " + str(self.csr_data_width - reg.size) + "},", file=stream)
+            if reg.size < 8:
+                multilane = True
         if multilane:
-            lanes = self.busword / 8
+            lanes = self.busword // 8
         else:
             lanes = 1
         print("            ], \"config\": {\"hspace\": 400, \"bits\": " + str(self.busword) + ", \"lanes\": " + str(lanes) + " }, \"options\": {\"hspace\": 400, \"bits\": " + str(self.busword) + ", \"lanes\": " + str(lanes) + "}", file=stream)
