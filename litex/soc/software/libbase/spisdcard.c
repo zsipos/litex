@@ -20,6 +20,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <system.h>
+
+#define USE_SPISCARD_RECLOCKING
 
 #ifdef CSR_SPISDCARD_BASE
 // Import prototypes for the functions
@@ -138,7 +141,7 @@ uint8_t spi_setspimode(void)
 {
     uint32_t r;
     int i, timeout=32;
-    
+
     // Initialise SPI mode
     // set CS to HIGH
     // Send pulses
@@ -215,6 +218,7 @@ uint8_t spi_sdcard_goidle(void)
         spi_write_byte( 0xff ); spi_write_byte( 0x69 ); spi_write_byte( 0x40 ); spi_write_byte( 0x00 ); spi_write_byte( 0x00 ); spi_write_byte( 0x00 ); spi_write_byte( 0x00 );
         r = spi_read_rbyte();
         timeout--;
+        busy_wait(20);
     } while ((r != 0x00) && (timeout>0));
     if(r!=0x00) return FAILURE;
 
@@ -444,6 +448,7 @@ uint8_t spi_sdcard_readMBR(void)
         return FAILURE;
     }
 
+#ifdef USE_SPISCARD_RECLOCKING
     // Reclock the card
     // Calculate 16MHz as an integer divider from the CONFIG_CLOCK_FREQUENCY
     // Add 1 as will be rounded down
@@ -454,7 +459,7 @@ uint8_t spi_sdcard_readMBR(void)
         divider=2;
     printf("Reclocking from %dKHz to %dKHz\n\n", CONFIG_CLOCK_FREQUENCY/(int)spisdcard_clk_divider_read()/1000, CONFIG_CLOCK_FREQUENCY/divider/1000);
     spisdcard_clk_divider_write(divider);
-    
+
     // Read in FAT16 File Allocation Table, array of 16bit unsinged integers
     // Calculate Storage from TOP of MAIN RAM
     sdCardFatTable = (uint16_t *)(MAIN_RAM_BASE+MAIN_RAM_SIZE-sdCardFatBootSector.sector_size*sdCardFatBootSector.fat_size_sectors);
@@ -468,6 +473,7 @@ uint8_t spi_sdcard_readMBR(void)
             return FAILURE;
         }
     }
+#endif
 
     // Read in FAT16 Root Directory
     // Calculate Storage from TOP of MAIN RAM
@@ -519,7 +525,7 @@ uint8_t spi_sdcard_readMBR(void)
 //      Return 0 success, 1 failure
 //
 // Details from https://codeandlife.com/2012/04/02/simple-fat-and-sd-tutorial-part-1/
-uint8_t spi_sdcard_readFile(char *filename, char *ext, uint32_t address)
+uint8_t spi_sdcard_readFile(char *filename, char *ext, unsigned long address)
 {
     int i, n, sector;
     uint16_t fileClusterStart;
