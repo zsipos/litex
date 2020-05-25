@@ -103,7 +103,7 @@ class Rocket(CPU):
         self.platform  = platform
         self.variant   = variant
         self.reset     = Signal()
-        self.interrupt = Signal(8)
+        self.interrupt = Signal(16)
 
         # memory bus for litex io+bios
         self.mmio_axi  = mmio_axi = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
