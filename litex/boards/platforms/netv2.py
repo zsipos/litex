@@ -23,7 +23,7 @@ _io = [
         Subsignal("cs_n", Pins("T19")),
         Subsignal("mosi", Pins("P22")),
         Subsignal("miso", Pins("R22")),
-        Subsignal("vpp", Pins("P21")),
+        Subsignal("wp",   Pins("P21")),
         Subsignal("hold", Pins("R21")),
         IOStandard("LVCMOS33")
     ),
@@ -139,8 +139,10 @@ _io = [
         Subsignal("data1_n", Pins("J21"), IOStandard("TMDS_33"), Inverted()),
         Subsignal("data2_p", Pins("J22"), IOStandard("TMDS_33"), Inverted()),
         Subsignal("data2_n", Pins("H22"), IOStandard("TMDS_33"), Inverted()),
-        Subsignal("scl", Pins("T18"), IOStandard("LVCMOS33")),
-        Subsignal("sda", Pins("V18"), IOStandard("LVCMOS33")),
+        Subsignal("scl", Pins("T18"), Inverted(), IOStandard("LVCMOS33")),
+        Subsignal("sda", Pins("V18"), Inverted(), IOStandard("LVCMOS33")),
+        Subsignal("sda_pu", Pins("G20"), IOStandard("LVCMOS33")),
+        Subsignal("sda_pd", Pins("F20"), IOStandard("LVCMOS33")),
     ),
 
     ("hdmi_in", 1,

@@ -211,7 +211,7 @@ class Rocket(CPU):
         assert hasattr(self, "axi2native"), "sdram should be connected!"
         self.specials += Instance("LitexRocketSystem", **self.cpu_params)
 
-    def connect_sdram(self, soc, size, use_axi=True):
+    def connect_sdram(self, soc, size):
         mem_width = soc.sdram.crossbar.controller.data_width
         if mem_width < 64: mem_width = 64
         self.mem_width = mem_width
@@ -275,64 +275,58 @@ class Rocket(CPU):
         if hasattr(soc, "with_busmasters") and soc.with_busmasters:
             # add dma channel
             dma_wb = wishbone.Interface()
-            if use_axi:
-                dma_axi = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
-                dma_params = dict(
-                    # dma slave
-                    o_l2_frontend_bus_axi4_0_aw_ready      = dma_axi.aw.ready,
-                    i_l2_frontend_bus_axi4_0_aw_valid      = dma_axi.aw.valid,
-                    i_l2_frontend_bus_axi4_0_aw_bits_id    = dma_axi.aw.id,
-                    i_l2_frontend_bus_axi4_0_aw_bits_addr  = dma_axi.aw.addr,
-                    i_l2_frontend_bus_axi4_0_aw_bits_len   = dma_axi.aw.len,
-                    i_l2_frontend_bus_axi4_0_aw_bits_size  = dma_axi.aw.size,
-                    i_l2_frontend_bus_axi4_0_aw_bits_burst = dma_axi.aw.burst,
-                    i_l2_frontend_bus_axi4_0_aw_bits_lock  = dma_axi.aw.lock,
-                    i_l2_frontend_bus_axi4_0_aw_bits_cache = dma_axi.aw.cache,
-                    i_l2_frontend_bus_axi4_0_aw_bits_prot  = dma_axi.aw.prot,
-                    i_l2_frontend_bus_axi4_0_aw_bits_qos   = dma_axi.aw.qos,
+            dma_axi = axi.AXIInterface(data_width=32, address_width=32, id_width=4)
+            dma_params = dict(
+                # dma slave
+                o_l2_frontend_bus_axi4_0_aw_ready      = dma_axi.aw.ready,
+                i_l2_frontend_bus_axi4_0_aw_valid      = dma_axi.aw.valid,
+                i_l2_frontend_bus_axi4_0_aw_bits_id    = dma_axi.aw.id,
+                i_l2_frontend_bus_axi4_0_aw_bits_addr  = dma_axi.aw.addr,
+                i_l2_frontend_bus_axi4_0_aw_bits_len   = dma_axi.aw.len,
+                i_l2_frontend_bus_axi4_0_aw_bits_size  = dma_axi.aw.size,
+                i_l2_frontend_bus_axi4_0_aw_bits_burst = dma_axi.aw.burst,
+                i_l2_frontend_bus_axi4_0_aw_bits_lock  = dma_axi.aw.lock,
+                i_l2_frontend_bus_axi4_0_aw_bits_cache = dma_axi.aw.cache,
+                i_l2_frontend_bus_axi4_0_aw_bits_prot  = dma_axi.aw.prot,
+                i_l2_frontend_bus_axi4_0_aw_bits_qos   = dma_axi.aw.qos,
 
-                    o_l2_frontend_bus_axi4_0_w_ready       = dma_axi.w.ready,
-                    i_l2_frontend_bus_axi4_0_w_valid       = dma_axi.w.valid,
-                    i_l2_frontend_bus_axi4_0_w_bits_data   = dma_axi.w.data,
-                    i_l2_frontend_bus_axi4_0_w_bits_strb   = dma_axi.w.strb,
-                    i_l2_frontend_bus_axi4_0_w_bits_last   = dma_axi.w.last,
+                o_l2_frontend_bus_axi4_0_w_ready       = dma_axi.w.ready,
+                i_l2_frontend_bus_axi4_0_w_valid       = dma_axi.w.valid,
+                i_l2_frontend_bus_axi4_0_w_bits_data   = dma_axi.w.data,
+                i_l2_frontend_bus_axi4_0_w_bits_strb   = dma_axi.w.strb,
+                i_l2_frontend_bus_axi4_0_w_bits_last   = dma_axi.w.last,
 
-                    i_l2_frontend_bus_axi4_0_b_ready       = dma_axi.b.ready,
-                    o_l2_frontend_bus_axi4_0_b_valid       = dma_axi.b.valid,
-                    o_l2_frontend_bus_axi4_0_b_bits_id     = dma_axi.b.id,
-                    o_l2_frontend_bus_axi4_0_b_bits_resp   = dma_axi.b.resp,
+                i_l2_frontend_bus_axi4_0_b_ready       = dma_axi.b.ready,
+                o_l2_frontend_bus_axi4_0_b_valid       = dma_axi.b.valid,
+                o_l2_frontend_bus_axi4_0_b_bits_id     = dma_axi.b.id,
+                o_l2_frontend_bus_axi4_0_b_bits_resp   = dma_axi.b.resp,
 
-                    o_l2_frontend_bus_axi4_0_ar_ready      = dma_axi.ar.ready,
-                    i_l2_frontend_bus_axi4_0_ar_valid      = dma_axi.ar.valid,
-                    i_l2_frontend_bus_axi4_0_ar_bits_id    = dma_axi.ar.id,
-                    i_l2_frontend_bus_axi4_0_ar_bits_addr  = dma_axi.ar.addr,
-                    i_l2_frontend_bus_axi4_0_ar_bits_len   = dma_axi.ar.len,
-                    i_l2_frontend_bus_axi4_0_ar_bits_size  = dma_axi.ar.size,
-                    i_l2_frontend_bus_axi4_0_ar_bits_burst = dma_axi.ar.burst,
-                    i_l2_frontend_bus_axi4_0_ar_bits_lock  = dma_axi.ar.lock,
-                    i_l2_frontend_bus_axi4_0_ar_bits_cache = dma_axi.ar.cache,
-                    i_l2_frontend_bus_axi4_0_ar_bits_prot  = dma_axi.ar.prot,
-                    i_l2_frontend_bus_axi4_0_ar_bits_qos   = dma_axi.ar.qos,
+                o_l2_frontend_bus_axi4_0_ar_ready      = dma_axi.ar.ready,
+                i_l2_frontend_bus_axi4_0_ar_valid      = dma_axi.ar.valid,
+                i_l2_frontend_bus_axi4_0_ar_bits_id    = dma_axi.ar.id,
+                i_l2_frontend_bus_axi4_0_ar_bits_addr  = dma_axi.ar.addr,
+                i_l2_frontend_bus_axi4_0_ar_bits_len   = dma_axi.ar.len,
+                i_l2_frontend_bus_axi4_0_ar_bits_size  = dma_axi.ar.size,
+                i_l2_frontend_bus_axi4_0_ar_bits_burst = dma_axi.ar.burst,
+                i_l2_frontend_bus_axi4_0_ar_bits_lock  = dma_axi.ar.lock,
+                i_l2_frontend_bus_axi4_0_ar_bits_cache = dma_axi.ar.cache,
+                i_l2_frontend_bus_axi4_0_ar_bits_prot  = dma_axi.ar.prot,
+                i_l2_frontend_bus_axi4_0_ar_bits_qos   = dma_axi.ar.qos,
 
-                    i_l2_frontend_bus_axi4_0_r_ready       = dma_axi.r.ready,
-                    o_l2_frontend_bus_axi4_0_r_valid       = dma_axi.r.valid,
-                    o_l2_frontend_bus_axi4_0_r_bits_id     = dma_axi.r.id,
-                    o_l2_frontend_bus_axi4_0_r_bits_data   = dma_axi.r.data,
-                    o_l2_frontend_bus_axi4_0_r_bits_resp   = dma_axi.r.resp,
-                    o_l2_frontend_bus_axi4_0_r_bits_last   = dma_axi.r.last
-                )
-                self.cpu_params.update(dma_params)
-                self.submodules.wb2axi = ResetInserter()(_Wishbone2AXI(dma_wb, dma_axi))
-                self.comb += self.wb2axi.reset.eq(ResetSignal() | self.reset)
-                # make rocket-chip peripherals accessible from LiteX
-                soc.add_wb_slave(0x00000000, dma_wb, 0x10000000)
-            else:
-                # use another dram port. no access to rocket-chip peripherals.
-                port = soc.sdram.crossbar.get_port()
-                port_wb = wishbone.Interface(data_width=port.data_width)
-                self.submodules.wbmem = LiteDRAMWishbone2Native(port_wb, port, base_address=base)
-                self.submodules.wbcvt = wishbone.Converter(dma_wb, port_wb)
+                i_l2_frontend_bus_axi4_0_r_ready       = dma_axi.r.ready,
+                o_l2_frontend_bus_axi4_0_r_valid       = dma_axi.r.valid,
+                o_l2_frontend_bus_axi4_0_r_bits_id     = dma_axi.r.id,
+                o_l2_frontend_bus_axi4_0_r_bits_data   = dma_axi.r.data,
+                o_l2_frontend_bus_axi4_0_r_bits_resp   = dma_axi.r.resp,
+                o_l2_frontend_bus_axi4_0_r_bits_last   = dma_axi.r.last
+            )
+            self.cpu_params.update(dma_params)
+            self.submodules.wb2axi = ResetInserter()(_Wishbone2AXI(dma_wb, dma_axi))
+            self.comb += self.wb2axi.reset.eq(ResetSignal() | self.reset)
             soc.add_wb_slave(base, dma_wb, size)
+            # make rocket-chip peripherals accessible from LiteX
+            #soc.add_memory_region("rocket2", 0x00000000, 0x10000000, type="io")
+            #soc.add_wb_slave(0x00000000, dma_wb, 0x10000000)
 
     def build_dts(self, bootargs="", devices="//insert your devices here\n"):
         if len(bootargs):

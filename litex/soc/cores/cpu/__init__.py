@@ -18,11 +18,14 @@ class CPU(Module):
     interrupts           = {}
     mem_map              = {}
     io_regions           = {}
+    use_rom              = False
+    def __init__(self, *args, **kwargs):
+        pass
 
 class CPUNone(CPU):
     data_width           = 32
     reset_address        = 0x00000000
-    io_regions           = {0x00000000: 0xf0000000} # origin, length
+    io_regions           = {0x00000000: 0x100000000} # origin, length
 
 # CPUS ---------------------------------------------------------------------------------------------
 
@@ -37,6 +40,7 @@ from litex.soc.cores.cpu.microwatt import Microwatt
 from litex.soc.cores.cpu.blackparrot import BlackParrotRV64
 
 CPUS = {
+    "None"       : CPUNone,
     "lm32"       : LM32,
     "mor1kx"     : MOR1KX,
     "picorv32"   : PicoRV32,
@@ -93,6 +97,8 @@ def check_format_cpu_variant(variant):
 	# Support the old style which used underscore for separator
     if variant is None:
         variant = "standard"
+    if variant == "debug":
+        variant = "standard+debug"
     variant = variant.replace('_', '+')
 
     # Check for valid CPU variants.
