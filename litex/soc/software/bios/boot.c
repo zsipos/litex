@@ -406,6 +406,7 @@ static unsigned int load_and_check_image_in_flash(unsigned int *rom_address, uns
 	return length;
 }
 #else
+static unsigned int check_image_in_flash(unsigned int *rom_address)
 {
 	unsigned int length;
 	unsigned int crc;
@@ -506,12 +507,6 @@ void flashboot(void)
 #endif
 	if(!length)
 		return;
-
-#ifdef MAIN_RAM_BASE
-	printf("Loading %d bytes from flash...\n", length);
-	// skip length and crc
-	memcpy((void *)MAIN_RAM_BASE, (unsigned int *)(FLASH_BOOT_ADDRESS + 2 * sizeof(unsigned int)), length);
-#endif
 
 	boot(0, 0, 0, FIRMWARE_BASE_ADDRESS);
 }
